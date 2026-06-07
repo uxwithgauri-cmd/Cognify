@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cognify</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      width: 340px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #ffffff;
+      color: #111827;
+      font-size: 13px;
+    }
+
+    button {
+      border: none;
+      background: none;
+      font-family: inherit;
+      font-size: inherit;
+      cursor: pointer;
+      padding: 0;
+      margin: 0;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: #e5e7eb;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #111827;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #111827;
+      cursor: pointer;
+      border: none;
+    }
+
+    input[type="range"]::-moz-range-track {
+      background: transparent;
+      border: none;
+    }
+
+    input[type="checkbox"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 44px;
+      height: 24px;
+      border-radius: 12px;
+      background: #d1d5db;
+      cursor: pointer;
+      position: relative;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+
+    input[type="checkbox"]::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 18px;
+      height: 18px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    input[type="checkbox"]:checked {
+      background: #111827;
+    }
+
+    input[type="checkbox"]:checked::after {
+      transform: translateX(20px);
+    }
+
+    /* Views */
+    .view {
+      display: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      padding: 12px 16px;
+    }
+
+    .view.active {
+      display: block;
+      opacity: 1;
+    }
+
+    /* Dividers */
+    .divider {
+      height: 1px;
+      background: #f3f4f6;
+      margin: 12px 0;
+    }
+
+    /* Headers */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      height: 28px;
+    }
+
+    .header-back {
+      font-size: 18px;
+      color: #111827;
+      cursor: pointer;
+      width: 24px;
+    }
+
+    .header-back:hover {
+      opacity: 0.7;
+    }
+
+    .header-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .header-icon {
+      font-size: 16px;
+      color: #9ca3af;
+      cursor: pointer;
+      width: 24px;
+      text-align: right;
+    }
+
+    .header-spacer {
+      width: 24px;
+    }
+
+    /* Section labels */
+    .section-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    /* Profile section (VIEW 1) */
+    .profile-display {
+      margin-bottom: 12px;
+    }
+
+    .profile-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 4px;
+    }
+
+    .profile-description {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 8px;
+    }
+
+    .change-profile-link {
+      font-size: 13px;
+      color: #2563eb;
+      text-decoration: none;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-family: inherit;
+      padding: 0;
+    }
+
+    .change-profile-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Action buttons */
+    .btn-primary {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #ffffff;
+      background: #1e3a8a;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-bottom: 8px;
+      border: none;
+    }
+
+    .btn-primary:hover {
+      background: #1e2a5f;
+    }
+
+    .btn-secondary {
+      width: 100%;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #2563eb;
+      background: #ffffff;
+      border: 1.5px solid #2563eb;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 8px;
+    }
+
+    .btn-secondary:hover {
+      background: #eff6ff;
+    }
+
+    .status-div {
+      font-size: 12px;
+      color: #16a34a;
+      margin-bottom: 12px;
+      min-height: 16px;
+    }
+
+    /* Icon button row (bottom of VIEW 1) */
+    .icon-buttons {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .icon-btn {
+      flex: 1;
+      padding: 10px;
+      font-size: 13px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .icon-btn:hover {
+      background: #f3f4f6;
+      border-color: #d1d5db;
+    }
+
+    .icon-btn-icon {
+      font-size: 16px;
+    }
+
+    .icon-btn-text {
+      font-size: 11px;
+      color: #6b7280;
+    }
+
+    /* Utility links (bottom of VIEW 1) */
+    .utility-links {
+      text-align: center;
+      font-size: 11px;
+      color: #9ca3af;
+    }
+
+    .utility-links button {
+      background: none;
+      border: none;
+      color: #9ca3af;
+      cursor: pointer;
+      font-size: 11px;
+      font-family: inherit;
+      padding: 0;
+      display: inline;
+      text-decoration: none;
+    }
+
+    .utility-links button:hover {
+      color: #6b7280;
+    }
+
+    .utility-separator {
+      display: inline;
+      margin: 0 4px;
+    }
+
+    /* Style buttons */
+    .style-buttons {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .style-btn {
+      flex: 1;
+      padding: 8px 10px;
+      font-size: 12px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 400;
+      color: #374151;
+    }
+
+    .style-btn:hover {
+      border-color: #d1d5db;
+    }
+
+    .style-btn.active {
+      border-color: #1e3a8a;
+      color: #1e3a8a;
+      font-weight: 600;
+    }
+
+    /* Slider with label */
+    .slider-control {
+      margin-bottom: 12px;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .slider-label {
+      font-size: 13px;
+      color: #374151;
+      font-weight: 500;
+    }
+
+    .slider-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: #111827;
+      min-width: 40px;
+      text-align: right;
+    }
+
+    /* Profile cards (VIEW 3) */
+    .profile-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .profile-card {
+      padding: 12px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: left;
+      width: 100%;
+    }
+
+    .profile-card:hover {
+      border-color: #d1d5db;
+    }
+
+    .profile-card.active {
+      border-color: #1e3a8a;
+      background: #eef2ff;
+    }
+
+    .profile-card-name {
+      font-weight: 700;
+      color: #111827;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .profile-card.active .profile-card-name {
+      color: #1e3a8a;
+    }
+
+    .profile-card-subtitle {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    /* Toggle row (VIEW 4) */
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+    }
+
+    .toggle-label {
+      font-size: 13px;
+      color: #374151;
+    }
+
+    .toggle-description {
+      font-size: 12px;
+      color: #9ca3af;
+      display: block;
+      margin-top: 4px;
+    }
+
+    /* Colour mode buttons */
+    .colour-buttons {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .colour-btn {
+      flex: 1;
+      padding: 8px 10px;
+      font-size: 12px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 400;
+      color: #374151;
+    }
+
+    .colour-btn:hover {
+      border-color: #d1d5db;
+    }
+
+    .colour-btn.active {
+      border-color: #1e3a8a;
+      color: #1e3a8a;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+<!-- VIEW 1: HOME -->
+<div class="view active" id="view1-home">
+  <div class="header">
+    <div class="header-title">Cognify</div>
+    <div class="header-spacer"></div>
+  </div>
+  
+  <div class="divider"></div>
+  
+  <div class="profile-display">
+    <div class="profile-name" id="currentProfileName">Calm Browser</div>
+    <div class="profile-description" id="currentProfileDescription">Warm tones, relaxed pace</div>
+    <button class="change-profile-link" id="changeProfileBtn">Change profile</button>
+  </div>
+  
+  <div class="divider"></div>
+  
+  <button class="btn-primary" id="adaptBtn">Adapt this page</button>
+  <button class="btn-secondary" id="summaryBtn">Get summary</button>
+  <div class="status-div" id="statusDiv"></div>
+  
+  <div class="divider"></div>
+  
+  <div class="icon-buttons">
+    <button class="icon-btn" id="displayBtn">
+      <div class="icon-btn-icon">👁</div>
+      <div class="icon-btn-text">Display</div>
+    </button>
+    <button class="icon-btn" id="focusBtn">
+      <div class="icon-btn-icon">🎯</div>
+      <div class="icon-btn-text">Focus</div>
+    </button>
+    <button class="icon-btn" id="colourBtn">
+      <div class="icon-btn-icon">🎨</div>
+      <div class="icon-btn-text">Colour</div>
+    </button>
+  </div>
+  
+  <div class="utility-links">
+    <button id="retakeQuiz1">Retake quiz</button>
+    <span class="utility-separator">·</span>
+    <button id="resetSettingsLink">Reset settings</button>
+  </div>
+</div>
+
+<!-- VIEW 2: DISPLAY SETTINGS -->
+<div class="view" id="view2-display">
+  <div class="header">
+    <button class="header-back" id="backFromDisplay">←</button>
+    <div class="header-title">Display</div>
+    <div class="header-spacer"></div>
+  </div>
+  
+  <div class="divider"></div>
+  
+  <label class="section-label">Font Style</label>
+  <div class="style-buttons">
+    <button class="style-btn active" data-font="default">Default</button>
+    <button class="style-btn" data-font="dyslexia">Dyslexia-Friendly</button>
+    <button class="style-btn" data-font="serif">Serif</button>
+  </div>
+  
+  <label class="section-label">Font Size</label>
+  <div class="slider-control">
+    <div class="slider-header">
+      <span class="slider-label">Size</span>
+      <span class="slider-value" id="fontSizeValue">16</span>
+    </div>
+    <input type="range" id="fontSizeSlider" min="14" max="24" step="1" value="16">
+  </div>
+  
+  <label class="section-label">Line Height</label>
+  <div class="slider-control">
+    <div class="slider-header">
+      <span class="slider-label">Height</span>
+      <span class="slider-value" id="lineHeightValue">1.6</span>
+    </div>
+    <input type="range" id="lineHeightSlider" min="1.2" max="2.2" step="0.1" value="1.6">
+  </div>
+  
+  <label class="section-label">Letter Spacing</label>
+  <div class="slider-control">
+    <div class="slider-header">
+      <span class="slider-label">Spacing</span>
+      <span class="slider-value" id="letterSpacingValue">0</span>
+    </div>
+    <input type="range" id="letterSpacingSlider" min="0" max="3" step="0.5" value="0">
+  </div>
+</div>
+
+<!-- VIEW 3: PROFILE SELECTOR -->
+<div class="view" id="view3-profiles">
+  <div class="header">
+    <button class="header-back" id="backFromProfiles">←</button>
+    <div class="header-title">Your Profile</div>
+    <div class="header-spacer"></div>
+  </div>
+  
+  <div class="divider"></div>
+  
+  <div class="profile-cards">
+    <button class="profile-card" data-profile="focused-reader">
+      <div class="profile-card-name">Focused Reader</div>
+      <div class="profile-card-subtitle">Bigger text, less clutter</div>
+    </button>
+    <button class="profile-card" data-profile="calm-browser">
+      <div class="profile-card-name">Calm Browser</div>
+      <div class="profile-card-subtitle">Warm tones, relaxed pace</div>
+    </button>
+    <button class="profile-card" data-profile="quick-scanner">
+      <div class="profile-card-name">Quick Scanner</div>
+      <div class="profile-card-subtitle">Compact, fast to skim</div>
+    </button>
+    <button class="profile-card" data-profile="deep-diver">
+      <div class="profile-card-name">Deep Diver</div>
+      <div class="profile-card-subtitle">Full detail, no distractions</div>
+    </button>
+    <button class="profile-card" data-profile="just-bigger-text">
+      <div class="profile-card-name">Just Bigger Text</div>
+      <div class="profile-card-subtitle">Simple font size increase only</div>
+    </button>
+  </div>
+</div>
+
+<!-- VIEW 4A: COLOUR -->
+<div class="view" id="view4a-colour">
+  <div class="header">
+    <button class="header-back" id="backFromColourA">←</button>
+    <div class="header-title">Colour</div>
+    <div class="header-spacer"></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <label class="section-label">COLOUR MODE</label>
+  <div class="colour-buttons">
+    <button class="colour-btn active" data-colour="normal">Normal</button>
+    <button class="colour-btn" data-colour="highcontrast">High Contrast</button>
+    <button class="colour-btn" data-colour="warm">Warm</button>
+  </div>
+</div>
+
+<!-- VIEW 4B: FOCUS -->
+<div class="view" id="view4b-focus">
+  <div class="header">
+    <button class="header-back" id="backFromFocusB">←</button>
+    <div class="header-title">Focus</div>
+    <div class="header-spacer"></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <label class="section-label">FOCUS MODE</label>
+  <div class="toggle-row">
+    <div style="font-size: 12px; color: #9ca3af;">Hides ads and sidebars</div>
+    <input type="checkbox" id="focusModeToggle">
+  </div>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>
