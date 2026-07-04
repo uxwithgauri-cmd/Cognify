@@ -3,620 +3,1051 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cognify</title>
+  <title>Equols</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+    :root {
+      --brand:      #2563EB;
+      --brand-dark: #1E3A8A;
+      --brand-light:#EEF2FF;
+      --ink:        #111827;
+      --muted:      #6B7280;
+      --border:     #E5E7EB;
+      --surface:    #F8FAFF;
+      --white:      #FFFFFF;
+      --radius-sm:  6px;
+      --radius-md:  10px;
+      --radius-lg:  14px;
+      --shadow-sm:  0 1px 3px rgba(0,0,0,0.08);
+      --shadow-md:  0 4px 16px rgba(0,0,0,0.10);
     }
+
+    /* FIX 6 — visually hidden utility */
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--white);
+      color: var(--ink);
       width: 340px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #ffffff;
-      color: #111827;
+      min-height: 100px;
       font-size: 13px;
+      line-height: 1.4;
     }
 
-    button {
-      border: none;
-      background: none;
-      font-family: inherit;
-      font-size: inherit;
+    /* ── Views ── */
+    .view { display: none; padding: 16px; opacity: 0; transform: translateX(8px); transition: opacity 0.15s ease, transform 0.15s ease; }
+    .view.active { display: block; opacity: 1; transform: translateX(0); }
+    @media (prefers-reduced-motion: reduce) { .view { transition: none; } }
+
+    /* ── Section labels ── */
+    .section-label {
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 8px;
+      margin-top: 16px;
+    }
+    .section-label:first-child,
+    .section-label.first { margin-top: 0; }
+
+    /* ── Toggle rows ── */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .toggle-row:last-child,
+    .toggle-row.no-border { border-bottom: none; }
+    .toggle-row-label { font-size: 13px; color: var(--ink); font-weight: 500; }
+    .toggle-row-desc  { font-size: 11px; color: var(--muted); margin-top: 2px; line-height: 1.3; }
+
+    /* ── Toggle switch — FIX 2 ── */
+    .toggle-switch { position: relative; flex-shrink: 0; }
+    /* FIX 2: 1px/1px keeps element in tab order; opacity:0 hides it visually */
+    .toggle-switch input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      margin: -1px;
+      overflow: hidden;
+    }
+    .toggle-track {
+      display: block;
+      width: 36px;
+      height: 20px;
+      border-radius: 10px;
+      background: var(--border);
+      transition: background 0.2s;
+      position: relative;
       cursor: pointer;
-      padding: 0;
-      margin: 0;
+    }
+    .toggle-thumb {
+      display: block;
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--white);
+      top: 2px;
+      left: 2px;
+      transition: transform 0.2s;
+      box-shadow: var(--shadow-sm);
+    }
+    .toggle-switch input:checked + .toggle-track { background: var(--brand); }
+    .toggle-switch input:checked + .toggle-track .toggle-thumb { transform: translateX(16px); }
+    /* FIX 2: visible focus ring when navigating by keyboard */
+    .toggle-switch input:focus-visible + .toggle-track {
+      outline: 2px solid var(--brand);
+      outline-offset: 2px;
     }
 
-    input[type="range"] {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 100%;
+    /* ── Button groups (font, cbf, reading level) ── */
+    .btn-group { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+    .btn-group button {
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--white);
+      color: var(--muted);
+      font-size: 12px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-group button:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-light); }
+    .btn-group button.active {
+      border-color: var(--brand-dark);
+      background: var(--brand-light);
+      color: var(--brand-dark);
+      font-weight: 500;
+    }
+
+    /* ── Back button ── */
+    .back-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      padding: 0 0 14px;
+      margin-bottom: 2px;
+      transition: color 0.15s;
+    }
+    .back-btn:hover { color: var(--ink); }
+
+    /* ── View title — FIX 10 ── */
+    .view-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--ink);
+      margin-bottom: 16px;
+      /* reset h2 browser defaults */
+      font-family: inherit;
+      line-height: 1.4;
+    }
+
+    /* ── Sliders ── */
+    .slider-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .slider-row input[type="range"] {
+      flex: 1;
+      accent-color: var(--brand);
       height: 4px;
       border-radius: 2px;
-      background: #e5e7eb;
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+      background: var(--border);
       outline: none;
-      cursor: pointer;
     }
-
-    input[type="range"]::-webkit-slider-thumb {
+    .slider-row input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      appearance: none;
-      width: 14px;
-      height: 14px;
+      width: 14px; height: 14px;
       border-radius: 50%;
-      background: #111827;
+      background: var(--brand-dark);
       cursor: pointer;
     }
-
-    input[type="range"]::-moz-range-thumb {
-      width: 14px;
-      height: 14px;
+    .slider-row input[type="range"]::-moz-range-thumb {
+      width: 14px; height: 14px;
       border-radius: 50%;
-      background: #111827;
-      cursor: pointer;
+      background: var(--brand-dark);
       border: none;
-    }
-
-    input[type="range"]::-moz-range-track {
-      background: transparent;
-      border: none;
-    }
-
-    input[type="checkbox"] {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 44px;
-      height: 24px;
-      border-radius: 12px;
-      background: #d1d5db;
       cursor: pointer;
-      position: relative;
-      transition: background 0.2s;
+    }
+    .slider-val {
+      width: 36px;
+      text-align: right;
+      font-size: 13px;
+      color: var(--brand-dark);
+      font-weight: 500;
       flex-shrink: 0;
     }
-
-    input[type="checkbox"]::after {
-      content: "";
-      position: absolute;
-      top: 3px;
-      left: 3px;
-      width: 18px;
-      height: 18px;
-      background: white;
-      border-radius: 50%;
-      transition: transform 0.2s;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    }
-
-    input[type="checkbox"]:checked {
-      background: #111827;
-    }
-
-    input[type="checkbox"]:checked::after {
-      transform: translateX(20px);
-    }
-
-    /* Views */
-    .view {
-      display: none;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      padding: 12px 16px;
-    }
-
-    .view.active {
-      display: block;
-      opacity: 1;
-    }
-
-    /* Dividers */
-    .divider {
-      height: 1px;
-      background: #f3f4f6;
-      margin: 12px 0;
-    }
-
-    /* Headers */
-    .header {
+    .slider-label-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
-      height: 28px;
-    }
-
-    .header-back {
-      font-size: 18px;
-      color: #111827;
-      cursor: pointer;
-      width: 24px;
-    }
-
-    .header-back:hover {
-      opacity: 0.7;
-    }
-
-    .header-title {
-      font-size: 18px;
-      font-weight: 700;
-      color: #111827;
-    }
-
-    .header-icon {
-      font-size: 16px;
-      color: #9ca3af;
-      cursor: pointer;
-      width: 24px;
-      text-align: right;
-    }
-
-    .header-spacer {
-      width: 24px;
-    }
-
-    /* Section labels */
-    .section-label {
-      font-size: 10px;
-      font-weight: 600;
-      color: #9ca3af;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 10px;
-      display: block;
-    }
-
-    /* Profile section (VIEW 1) */
-    .profile-display {
-      margin-bottom: 12px;
-    }
-
-    .profile-name {
-      font-size: 16px;
-      font-weight: 700;
-      color: #111827;
       margin-bottom: 4px;
     }
+    .slider-label-row span { font-size: 12px; color: var(--muted); }
 
-    .profile-description {
-      font-size: 13px;
-      color: #6b7280;
-      margin-bottom: 8px;
+    /* ── Home: profile card ── */
+    .profile-card-home {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      margin: 10px 0;
+      border-left: 3px solid var(--brand);
     }
-
-    .change-profile-link {
-      font-size: 13px;
-      color: #2563eb;
-      text-decoration: none;
+    .profile-card-home .pcn { font-size: 14px; font-weight: 600; color: var(--ink); }
+    .profile-card-home .pcd { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .profile-card-home .pcc {
+      font-size: 11px;
+      color: var(--brand);
+      margin-top: 6px;
       cursor: pointer;
       background: none;
       border: none;
       font-family: inherit;
       padding: 0;
+      display: inline-block;
     }
+    .profile-card-home .pcc:hover { text-decoration: underline; }
 
-    .change-profile-link:hover {
-      text-decoration: underline;
-    }
-
-    /* Action buttons */
-    .btn-primary {
+    /* ── Home: action buttons ── */
+    .btn-adapt {
       width: 100%;
-      padding: 12px 14px;
-      font-size: 14px;
-      font-weight: 700;
-      color: #ffffff;
-      background: #1e3a8a;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background 0.2s;
-      margin-bottom: 8px;
+      background: var(--brand-dark);
+      color: var(--white);
       border: none;
-    }
-
-    .btn-primary:hover {
-      background: #1e2a5f;
-    }
-
-    .btn-secondary {
-      width: 100%;
-      padding: 10px 14px;
-      font-size: 13px;
+      border-radius: var(--radius-md);
+      padding: 11px;
+      font-size: 14px;
       font-weight: 500;
-      color: #2563eb;
-      background: #ffffff;
-      border: 1.5px solid #2563eb;
-      border-radius: 6px;
+      font-family: inherit;
       cursor: pointer;
-      transition: all 0.2s;
       margin-bottom: 8px;
+      transition: background 0.15s;
     }
-
-    .btn-secondary:hover {
-      background: #eff6ff;
-    }
-
-    .status-div {
-      font-size: 12px;
-      color: #16a34a;
-      margin-bottom: 12px;
-      min-height: 16px;
-    }
-
-    /* Icon button row (bottom of VIEW 1) */
-    .icon-buttons {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
-
-    .icon-btn {
-      flex: 1;
-      padding: 10px;
+    .btn-adapt:hover { background: var(--brand); }
+    .btn-summary {
+      width: 100%;
+      background: var(--white);
+      color: var(--brand-dark);
+      border: 1.5px solid var(--brand);
+      border-radius: var(--radius-md);
+      padding: 9px;
       font-size: 13px;
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 6px;
+      font-family: inherit;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: background 0.15s;
+      margin-bottom: 2px;
+    }
+    .btn-summary:hover { background: var(--brand-light); }
+
+    /* ── Status div ── */
+    #statusDiv {
+      font-size: 12px;
+      text-align: center;
+      margin: 4px 0;
+      color: #16A34A;
+    }
+
+    /* ── Site memory row ── */
+    .site-memory-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    .btn-site {
+      border: 1px solid var(--brand);
+      color: var(--brand);
+      background: transparent;
+      border-radius: var(--radius-sm);
+      padding: 4px 12px;
+      font-size: 12px;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s;
+    }
+    .btn-site:hover { background: var(--brand-light); }
+    .btn-clear-site {
+      border: 1px solid var(--border);
+      color: var(--muted);
+      background: transparent;
+      border-radius: var(--radius-sm);
+      padding: 4px 12px;
+      font-size: 12px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-clear-site:hover { border-color: var(--muted); color: var(--ink); }
+
+    /* ── Nav badges ── */
+    .nav-badge {
+      position: absolute; top: -4px; right: -4px;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #2563EB; display: none;
+      border: 2px solid white; pointer-events: none;
+    }
+
+    /* ── Nav grid ── */
+    .nav-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin: 12px 0;
+    }
+    .nav-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 6px;
+      font-size: 11px;
+      color: var(--muted);
+      font-family: inherit;
+      cursor: pointer;
+      text-align: center;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 4px;
+      transition: all 0.15s;
+      position: relative;
     }
+    .nav-btn:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-light); }
+    .nav-btn-icon { font-size: 18px; line-height: 1; }
 
-    .icon-btn:hover {
-      background: #f3f4f6;
-      border-color: #d1d5db;
+    /* ── Bottom utility links ── */
+    .utility-row {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
     }
-
-    .icon-btn-icon {
-      font-size: 16px;
-    }
-
-    .icon-btn-text {
+    .utility-row button {
       font-size: 11px;
-      color: #6b7280;
-    }
-
-    /* Utility links (bottom of VIEW 1) */
-    .utility-links {
-      text-align: center;
-      font-size: 11px;
-      color: #9ca3af;
-    }
-
-    .utility-links button {
+      color: var(--muted);
+      cursor: pointer;
+      text-decoration: none;
       background: none;
       border: none;
-      color: #9ca3af;
-      cursor: pointer;
-      font-size: 11px;
       font-family: inherit;
-      padding: 0;
-      display: inline;
-      text-decoration: none;
+      transition: color 0.15s;
     }
+    .utility-row button:hover { color: var(--brand); }
 
-    .utility-links button:hover {
-      color: #6b7280;
-    }
-
-    .utility-separator {
-      display: inline;
-      margin: 0 4px;
-    }
-
-    /* Style buttons */
-    .style-buttons {
-      display: flex;
-      gap: 6px;
-      margin-bottom: 12px;
-    }
-
-    .style-btn {
-      flex: 1;
-      padding: 8px 10px;
-      font-size: 12px;
-      background: #ffffff;
-      border: 1px solid #e5e7eb;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-weight: 400;
-      color: #374151;
-    }
-
-    .style-btn:hover {
-      border-color: #d1d5db;
-    }
-
-    .style-btn.active {
-      border-color: #1e3a8a;
-      color: #1e3a8a;
-      font-weight: 600;
-    }
-
-    /* Slider with label */
-    .slider-control {
-      margin-bottom: 12px;
-    }
-
-    .slider-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    /* ── Profile selector cards ── */
+    .profile-option {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
       margin-bottom: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      background: var(--white);
+      width: 100%;
+      text-align: left;
+      transition: all 0.15s;
+    }
+    .profile-option:hover { border-color: var(--brand); background: var(--brand-light); }
+    .profile-option.active {
+      border-color: var(--brand-dark);
+      background: var(--brand-light);
+    }
+    .profile-option .pon { font-size: 13px; font-weight: 600; color: var(--ink); }
+    .profile-option.active .pon { color: var(--brand-dark); }
+    .profile-option .pod { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Sensory mode button ── */
+    .btn-sensory-mode {
+      width: 100%;
+      background: var(--white);
+      color: var(--brand-dark);
+      border: 1.5px solid var(--brand-dark);
+      border-radius: var(--radius-md);
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      letter-spacing: 0.03em;
+      transition: all 0.15s;
+      margin-bottom: 4px;
+    }
+    .btn-sensory-mode:hover { background: var(--brand-light); }
+
+    /* ── Number input ── */
+    .interval-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0 12px;
+    }
+    .interval-row label { font-size: 12px; color: var(--muted); }
+    .interval-row input[type="number"] {
+      width: 52px;
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-family: inherit;
+      color: var(--ink);
+      outline: none;
+    }
+    .interval-row input[type="number"]:focus { border-color: var(--brand); }
+
+    /* ── Site notice ── */
+    #siteNotice {
+      font-size: 11px;
+      color: var(--brand);
+      margin: 0;
+      padding: 0;
+      display: none;
+    }
+    #siteNotice:not([style*="display: none"]) { margin-bottom: 8px; }
+
+    /* ── Divider ── */
+    .divider { height: 1px; background: var(--border); margin: 12px 0; }
+
+    /* ── Home header ── */
+    .home-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    /* FIX 10: h1 reset */
+    .home-logo {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--brand);
+      letter-spacing: -0.01em;
+      font-family: inherit;
+      line-height: 1.4;
     }
 
-    .slider-label {
+    /* ── Onboarding: quiz option buttons ── */
+    .quiz-opt-btn {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 11px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      margin-bottom: 8px;
+      background: var(--white);
       font-size: 13px;
-      color: #374151;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s;
+      color: var(--ink);
+    }
+    .quiz-opt-btn:hover { border-color: var(--brand); background: var(--brand-light); }
+    .quiz-opt-btn.selected {
+      border-color: var(--brand-dark);
+      background: var(--brand-light);
+      color: var(--brand-dark);
       font-weight: 500;
     }
 
-    .slider-value {
-      font-size: 13px;
+    /* ── Onboarding: result features box ── */
+    #result-features {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    #result-features .rf-label {
       font-weight: 600;
-      color: #111827;
-      min-width: 40px;
-      text-align: right;
-    }
-
-    /* Profile cards (VIEW 3) */
-    .profile-cards {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .profile-card {
-      padding: 12px;
-      background: #ffffff;
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      cursor: pointer;
-      transition: all 0.2s;
-      text-align: left;
-      width: 100%;
-    }
-
-    .profile-card:hover {
-      border-color: #d1d5db;
-    }
-
-    .profile-card.active {
-      border-color: #1e3a8a;
-      background: #eef2ff;
-    }
-
-    .profile-card-name {
-      font-weight: 700;
-      color: #111827;
-      font-size: 14px;
+      color: var(--ink);
       margin-bottom: 4px;
-    }
-
-    .profile-card.active .profile-card-name {
-      color: #1e3a8a;
-    }
-
-    .profile-card-subtitle {
-      font-size: 12px;
-      color: #9ca3af;
-    }
-
-    /* Toggle row (VIEW 4) */
-    .toggle-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 0;
-    }
-
-    .toggle-label {
-      font-size: 13px;
-      color: #374151;
-    }
-
-    .toggle-description {
-      font-size: 12px;
-      color: #9ca3af;
       display: block;
-      margin-top: 4px;
     }
+    #result-features-list { list-style: none; padding: 0; }
+    #result-features-list li::before { content: '✓  '; color: var(--brand); font-weight: 600; }
 
-    /* Colour mode buttons */
-    .colour-buttons {
-      display: flex;
-      gap: 6px;
-      margin-bottom: 12px;
-    }
-
-    .colour-btn {
-      flex: 1;
-      padding: 8px 10px;
-      font-size: 12px;
-      background: #ffffff;
-      border: 1px solid #e5e7eb;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-weight: 400;
-      color: #374151;
-    }
-
-    .colour-btn:hover {
-      border-color: #d1d5db;
-    }
-
-    .colour-btn.active {
-      border-color: #1e3a8a;
-      color: #1e3a8a;
-      font-weight: 600;
+    @keyframes cognify-spin { to { transform: rotate(360deg); } }
+    .cognify-spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: cognify-spin 0.7s linear infinite;
+      vertical-align: middle;
     }
   </style>
 </head>
 <body>
 
+<!-- FIX 11: hidden descriptions for adapt/summary buttons -->
+<span id="adaptDesc" class="visually-hidden">Rewrites the current page content for easier reading</span>
+<span id="summaryDesc" class="visually-hidden">Extracts the key points from the current page as a bullet list</span>
+
 <!-- VIEW 1: HOME -->
-<div class="view active" id="view1-home">
-  <div class="header">
-    <div class="header-title">Cognify</div>
-    <div class="header-spacer"></div>
+<div class="view active" id="view1-home" style="padding:14px;">
+  <div class="home-header">
+    <!-- FIX 10: h1 for main brand heading -->
+    <h1 class="home-logo">Equols</h1>
   </div>
-  
-  <div class="divider"></div>
-  
-  <div class="profile-display">
-    <div class="profile-name" id="currentProfileName">Calm Browser</div>
-    <div class="profile-description" id="currentProfileDescription">Warm tones, relaxed pace</div>
-    <button class="change-profile-link" id="changeProfileBtn">Change profile</button>
+
+  <div class="profile-card-home">
+    <div class="pcn" id="currentProfileName">No profile set</div>
+    <div class="pcd" id="currentProfileDescription">Take the quiz to get started</div>
+    <button class="pcc" id="changeProfileBtn">Change profile</button>
   </div>
-  
-  <div class="divider"></div>
-  
-  <button class="btn-primary" id="adaptBtn">Adapt this page</button>
-  <button class="btn-secondary" id="summaryBtn">Get summary</button>
-  <div class="status-div" id="statusDiv"></div>
-  
-  <div class="divider"></div>
-  
-  <div class="icon-buttons">
-    <button class="icon-btn" id="displayBtn">
-      <div class="icon-btn-icon">👁</div>
-      <div class="icon-btn-text">Display</div>
-    </button>
-    <button class="icon-btn" id="focusBtn">
-      <div class="icon-btn-icon">🎯</div>
-      <div class="icon-btn-text">Focus</div>
-    </button>
-    <button class="icon-btn" id="colourBtn">
-      <div class="icon-btn-icon">🎨</div>
-      <div class="icon-btn-text">Colour</div>
-    </button>
+
+  <div id="siteNotice">Using saved settings for this site</div>
+
+  <div class="site-memory-row">
+    <button class="btn-site" id="saveSiteBtn"><span id="saveSiteDot" style="display:none;width:7px;height:7px;border-radius:50%;background:#16a34a;flex-shrink:0;" aria-hidden="true"></span>Save for this site</button>
+    <button class="btn-clear-site" id="clearSiteBtn">Clear site settings</button>
   </div>
-  
-  <div class="utility-links">
-    <button id="retakeQuiz1">Retake quiz</button>
-    <span class="utility-separator">·</span>
+
+  <!-- FIX 11: aria-describedby on action buttons -->
+  <button class="btn-adapt" id="adaptBtn" aria-describedby="adaptDesc">Adapt this page</button>
+  <button class="btn-summary" id="summaryBtn" aria-describedby="summaryDesc">Get summary</button>
+  <!-- FIX 4: aria-live region for status announcements -->
+  <div id="statusDiv" aria-live="polite" aria-atomic="true"></div>
+
+  <nav aria-label="Accessibility settings categories">
+    <div class="nav-grid">
+      <!-- FIX 3: descriptive aria-label on nav buttons -->
+      <button class="nav-btn" id="displayBtn" aria-label="Display settings"><span class="nav-badge" id="badge-display"></span><span class="nav-btn-icon" aria-hidden="true">🖥</span>Display</button>
+      <button class="nav-btn" id="visualBtn" aria-label="Visual accessibility settings"><span class="nav-badge" id="badge-visual"></span><span class="nav-btn-icon" aria-hidden="true">👁</span>Visual</button>
+      <button class="nav-btn" id="cognitiveBtn" aria-label="Cognitive accessibility settings"><span class="nav-badge" id="badge-cognitive"></span><span class="nav-btn-icon" aria-hidden="true">🧠</span>Cognitive</button>
+      <button class="nav-btn" id="motorBtn" aria-label="Motor accessibility settings"><span class="nav-badge" id="badge-motor"></span><span class="nav-btn-icon" aria-hidden="true">🤚</span>Motor</button>
+      <button class="nav-btn" id="sensoryBtn" aria-label="Sensory accessibility settings"><span class="nav-badge" id="badge-sensory"></span><span class="nav-btn-icon" aria-hidden="true">🌿</span>Sensory</button>
+      <button class="nav-btn" id="languageBtn" aria-label="Language accessibility settings"><span class="nav-badge" id="badge-language"></span><span class="nav-btn-icon" aria-hidden="true">🌐</span>Language</button>
+    </div>
+  </nav>
+
+  <details style="margin-top:10px;margin-bottom:4px;">
+    <summary style="font-size:11px;color:var(--muted);cursor:pointer;list-style:none;display:flex;align-items:center;gap:4px;padding:4px 0;">
+      <span>⚙ API settings</span>
+    </summary>
+    <div style="padding:8px 0 4px;">
+      <label for="apiKeyInput" style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">Anthropic API key</label>
+      <input type="password" id="apiKeyInput" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:monospace;color:var(--ink);outline:none;box-sizing:border-box;" placeholder="sk-ant-...">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
+        <span style="font-size:10px;color:var(--muted);">Stored locally on your device only</span>
+        <button id="saveApiKey" style="font-size:11px;color:var(--brand);background:none;border:none;cursor:pointer;font-family:inherit;padding:0;">Save key</button>
+      </div>
+    </div>
+  </details>
+
+  <div class="utility-row">
+    <button id="retakeQuizBtn">Retake quiz</button>
     <button id="resetSettingsLink">Reset settings</button>
   </div>
 </div>
 
-<!-- VIEW 2: DISPLAY SETTINGS -->
+<!-- VIEW 2: DISPLAY -->
 <div class="view" id="view2-display">
-  <div class="header">
-    <button class="header-back" id="backFromDisplay">←</button>
-    <div class="header-title">Display</div>
-    <div class="header-spacer"></div>
+  <!-- FIX 5: descriptive aria-label on back buttons -->
+  <button class="back-btn" id="backFromDisplay" aria-label="Back to home">← Back</button>
+  <!-- FIX 10: h2 for view title -->
+  <h2 class="view-title">Display</h2>
+
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;margin-top:0;">
+    <span class="section-label first" style="margin:0;">Font style</span>
   </div>
-  
-  <div class="divider"></div>
-  
-  <label class="section-label">Font Style</label>
-  <div class="style-buttons">
-    <button class="style-btn active" data-font="default">Default</button>
-    <button class="style-btn" data-font="dyslexia">Dyslexia-Friendly</button>
-    <button class="style-btn" data-font="serif">Serif</button>
+  <div class="btn-group" style="margin-bottom:16px;">
+    <!-- FIX 9: aria-pressed states on button group buttons -->
+    <button class="style-btn" id="fontDefault" data-font="default" aria-pressed="true">Default</button>
+    <button class="style-btn" id="fontDyslexia" data-font="dyslexia" aria-pressed="false">Dyslexia-Friendly</button>
+    <button class="style-btn" id="fontSerif" data-font="serif" aria-pressed="false">Serif</button>
   </div>
-  
-  <label class="section-label">Font Size</label>
-  <div class="slider-control">
-    <div class="slider-header">
-      <span class="slider-label">Size</span>
-      <span class="slider-value" id="fontSizeValue">16</span>
-    </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+    <span class="section-label" style="margin:0;">Font size</span>
+    <span id="hint-fontSize" style="font-size:10px;color:var(--muted);"></span>
+  </div>
+  <label for="fontSizeSlider" class="visually-hidden">Font size</label>
+  <div class="slider-row">
     <input type="range" id="fontSizeSlider" min="14" max="24" step="1" value="16">
+    <span class="slider-val" id="fontSizeValue" aria-hidden="true">16</span>
   </div>
-  
-  <label class="section-label">Line Height</label>
-  <div class="slider-control">
-    <div class="slider-header">
-      <span class="slider-label">Height</span>
-      <span class="slider-value" id="lineHeightValue">1.6</span>
-    </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+    <span class="section-label" style="margin:0;">Line height</span>
+    <span id="hint-lineHeight" style="font-size:10px;color:var(--muted);"></span>
+  </div>
+  <label for="lineHeightSlider" class="visually-hidden">Line height</label>
+  <div class="slider-row">
     <input type="range" id="lineHeightSlider" min="1.2" max="2.2" step="0.1" value="1.6">
+    <span class="slider-val" id="lineHeightValue" aria-hidden="true">1.6</span>
   </div>
-  
-  <label class="section-label">Letter Spacing</label>
-  <div class="slider-control">
-    <div class="slider-header">
-      <span class="slider-label">Spacing</span>
-      <span class="slider-value" id="letterSpacingValue">0</span>
-    </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+    <span class="section-label" style="margin:0;">Letter spacing</span>
+    <span id="hint-letterSpacing" style="font-size:10px;color:var(--muted);"></span>
+  </div>
+  <label for="letterSpacingSlider" class="visually-hidden">Letter spacing</label>
+  <div class="slider-row">
     <input type="range" id="letterSpacingSlider" min="0" max="3" step="0.5" value="0">
+    <span class="slider-val" id="letterSpacingValue" aria-hidden="true">0</span>
   </div>
 </div>
 
-<!-- VIEW 3: PROFILE SELECTOR -->
+<!-- VIEW 3: PROFILES -->
 <div class="view" id="view3-profiles">
-  <div class="header">
-    <button class="header-back" id="backFromProfiles">←</button>
-    <div class="header-title">Your Profile</div>
-    <div class="header-spacer"></div>
-  </div>
-  
-  <div class="divider"></div>
-  
-  <div class="profile-cards">
-    <button class="profile-card" data-profile="focused-reader">
-      <div class="profile-card-name">Focused Reader</div>
-      <div class="profile-card-subtitle">Bigger text, less clutter</div>
-    </button>
-    <button class="profile-card" data-profile="calm-browser">
-      <div class="profile-card-name">Calm Browser</div>
-      <div class="profile-card-subtitle">Warm tones, relaxed pace</div>
-    </button>
-    <button class="profile-card" data-profile="quick-scanner">
-      <div class="profile-card-name">Quick Scanner</div>
-      <div class="profile-card-subtitle">Compact, fast to skim</div>
-    </button>
-    <button class="profile-card" data-profile="deep-diver">
-      <div class="profile-card-name">Deep Diver</div>
-      <div class="profile-card-subtitle">Full detail, no distractions</div>
-    </button>
-    <button class="profile-card" data-profile="just-bigger-text">
-      <div class="profile-card-name">Just Bigger Text</div>
-      <div class="profile-card-subtitle">Simple font size increase only</div>
-    </button>
-  </div>
+  <button class="back-btn" id="backFromProfiles" aria-label="Back to home">← Back</button>
+  <h2 class="view-title">Your Profile</h2>
+
+  <!-- FIX 7: profile cards are already <button>; add aria-pressed -->
+  <button class="profile-option profile-card" data-profile="focused-reader" aria-pressed="false">
+    <div class="pon profile-card-name">Focused Reader</div>
+    <div class="pod profile-card-subtitle">Bigger text, less clutter</div>
+  </button>
+  <button class="profile-option profile-card" data-profile="calm-browser" aria-pressed="false">
+    <div class="pon profile-card-name">Calm Browser</div>
+    <div class="pod profile-card-subtitle">Warm tones, relaxed pace</div>
+  </button>
+  <button class="profile-option profile-card" data-profile="quick-scanner" aria-pressed="false">
+    <div class="pon profile-card-name">Quick Scanner</div>
+    <div class="pod profile-card-subtitle">Compact, fast to skim</div>
+  </button>
+  <button class="profile-option profile-card" data-profile="deep-diver" aria-pressed="false">
+    <div class="pon profile-card-name">Deep Diver</div>
+    <div class="pod profile-card-subtitle">Full detail, no distractions</div>
+  </button>
+  <button class="profile-option profile-card" data-profile="just-bigger-text" aria-pressed="false">
+    <div class="pon profile-card-name">Just Bigger Text</div>
+    <div class="pod profile-card-subtitle">Simple font size increase only</div>
+  </button>
 </div>
 
-<!-- VIEW 4A: COLOUR -->
-<div class="view" id="view4a-colour">
-  <div class="header">
-    <button class="header-back" id="backFromColourA">←</button>
-    <div class="header-title">Colour</div>
-    <div class="header-spacer"></div>
-  </div>
+<!-- VIEW: VISUAL -->
+<div class="view" id="view-visual">
+  <button class="back-btn" id="backFromVisual" aria-label="Back to home">← Back</button>
+  <h2 class="view-title">Visual</h2>
 
-  <div class="divider"></div>
-
-  <label class="section-label">COLOUR MODE</label>
-  <div class="colour-buttons">
-    <button class="colour-btn active" data-colour="normal">Normal</button>
-    <button class="colour-btn" data-colour="highcontrast">High Contrast</button>
-    <button class="colour-btn" data-colour="warm">Warm</button>
-  </div>
-</div>
-
-<!-- VIEW 4B: FOCUS -->
-<div class="view" id="view4b-focus">
-  <div class="header">
-    <button class="header-back" id="backFromFocusB">←</button>
-    <div class="header-title">Focus</div>
-    <div class="header-spacer"></div>
-  </div>
-
-  <div class="divider"></div>
-
-  <label class="section-label">FOCUS MODE</label>
+  <span class="section-label first">Display mode</span>
+  <!-- FIX 2: toggle switches with toggle-track/toggle-thumb and aria-label on input -->
   <div class="toggle-row">
-    <div style="font-size: 12px; color: #9ca3af;">Hides ads and sidebars</div>
-    <input type="checkbox" id="focusModeToggle">
+    <div>
+      <div class="toggle-row-label" id="lbl-darkmode">Dark mode</div>
+      <div class="toggle-row-desc">Easy on the eyes in low light</div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="toggleDarkMode" aria-labelledby="lbl-darkmode">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
   </div>
+  <div class="toggle-row no-border">
+    <div>
+      <div class="toggle-row-label" id="lbl-textonly">Text only</div>
+      <div class="toggle-row-desc">Hides images and visual clutter</div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="toggleTextOnly" aria-labelledby="lbl-textonly">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+
+  <span class="section-label">Colour blindness</span>
+  <div class="btn-group" style="margin-bottom:4px;">
+    <!-- FIX 9: aria-pressed on cbf buttons -->
+    <button class="cbf-btn active" data-cbf="none" aria-pressed="true">None</button>
+    <button class="cbf-btn" data-cbf="deuteranopia" aria-pressed="false">Deuteranopia</button>
+    <button class="cbf-btn" data-cbf="protanopia" aria-pressed="false">Protanopia</button>
+    <button class="cbf-btn" data-cbf="tritanopia" aria-pressed="false">Tritanopia</button>
+  </div>
+
+  <span class="section-label">Contrast &amp; links</span>
+  <div class="toggle-row">
+    <div>
+      <div class="toggle-row-label" id="lbl-contrast">Contrast boost</div>
+      <div class="toggle-row-desc">Increases text contrast on any page</div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="contrastToggle" aria-labelledby="lbl-contrast">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+  <div class="toggle-row no-border">
+    <div>
+      <div class="toggle-row-label" id="lbl-links">Force link underlines</div>
+      <div class="toggle-row-desc">Makes all links clearly underlined</div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="linksToggle" aria-labelledby="lbl-links">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+
+  <span class="section-label">Reading aids</span>
+  <div class="toggle-row">
+    <div>
+      <div class="toggle-row-label" id="lbl-ruler">Reading ruler</div>
+      <div class="toggle-row-desc">Yellow band follows your cursor</div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="rulerToggle" aria-labelledby="lbl-ruler">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+  <div class="toggle-row no-border">
+    <div>
+      <div class="toggle-row-label" id="lbl-linefocus">Line focus</div>
+      <div class="toggle-row-desc">Dims everything except current line</div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="lineFocusToggle" aria-labelledby="lbl-linefocus">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+    <span class="section-label" style="margin:0;">Image opacity</span>
+    <span id="hint-imageOpacity" style="font-size:10px;color:var(--muted);"></span>
+  </div>
+  <label for="imageOpacitySlider" class="visually-hidden">Image opacity</label>
+  <div class="slider-row">
+    <input type="range" id="imageOpacitySlider" min="0" max="100" step="1" value="100">
+    <span class="slider-val" id="imageOpacityValue" aria-hidden="true">100%</span>
+  </div>
+
+  <span class="section-label">Keyboard navigation</span>
+  <div class="toggle-row no-border">
+    <div>
+      <div class="toggle-row-label" id="lbl-focusrings">Keyboard focus highlight</div>
+      <div class="toggle-row-desc">Highlights focused element when using Tab</div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="focusRingsToggle" aria-labelledby="lbl-focusrings">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+</div>
+
+<!-- VIEW: COGNITIVE -->
+<div class="view" id="view-cognitive">
+  <button class="back-btn" id="backFromCognitive" aria-label="Back to home">← Back</button>
+  <h2 class="view-title">Cognitive</h2>
+
+  <span class="section-label first">Focus mode</span>
+  <div class="toggle-row no-border">
+    <div>
+      <div class="toggle-row-label" id="lbl-distraction">Focus mode</div>
+      <div class="toggle-row-desc">Hides ads, sidebars and navigation clutter</div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="distractionToggle" aria-labelledby="lbl-distraction">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+
+  <span class="section-label">Reading level</span>
+  <div class="btn-group" style="margin-bottom:4px;">
+    <!-- FIX 9: aria-pressed on reading level buttons -->
+    <button class="style-btn active" data-reading="default" aria-pressed="true">Default</button>
+    <button class="style-btn" data-reading="simple" aria-pressed="false">Simple</button>
+    <button class="style-btn" data-reading="standard" aria-pressed="false">Standard</button>
+    <button class="style-btn" data-reading="detailed" aria-pressed="false">Detailed</button>
+  </div>
+
+  <span class="section-label">Break reminders</span>
+  <div class="toggle-row">
+    <div>
+      <div class="toggle-row-label" id="lbl-break">Break reminders</div>
+      <div class="toggle-row-desc">Shows rest breaks every N minutes</div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="breakReminderToggle" aria-labelledby="lbl-break">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+  <div class="interval-row">
+    <label for="breakIntervalInput">Interval (minutes)</label>
+    <input type="number" id="breakIntervalInput" min="5" max="120" value="20">
+  </div>
+
+  <span class="section-label">Text chunking</span>
+  <div class="toggle-row">
+    <div>
+      <div class="toggle-row-label" id="lbl-chunking">Text chunking</div>
+      <div class="toggle-row-desc">Splits long paragraphs into shorter ones</div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="chunkingToggle" aria-labelledby="lbl-chunking">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+  <div class="toggle-row no-border">
+    <div>
+      <div class="toggle-row-label" id="lbl-sentence">Sentence highlighter</div>
+      <div class="toggle-row-desc">Click any sentence to highlight and track it</div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="toggleSentenceHighlight" aria-labelledby="lbl-sentence">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+
+  <span class="section-label">Reading time</span>
+  <div class="toggle-row no-border">
+    <div>
+      <div class="toggle-row-label" id="lbl-readtime">Reading time estimate</div>
+      <div class="toggle-row-desc">Shows how long an article takes to read</div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="readTimeToggle" aria-labelledby="lbl-readtime">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+</div>
+
+<!-- VIEW: MOTOR -->
+<div class="view" id="view-motor">
+  <button class="back-btn" id="backFromMotor" aria-label="Back to home">← Back</button>
+  <h2 class="view-title">Motor Accessibility</h2>
+
+  <span class="section-label first">Click targets</span>
+  <div class="toggle-row no-border">
+    <div>
+      <div class="toggle-row-label" id="lbl-targets">Enlarge click targets</div>
+      <div class="toggle-row-desc">Makes buttons and links easier to tap</div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="targetsToggle" aria-labelledby="lbl-targets">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+
+  <span class="section-label">Navigation</span>
+  <div class="toggle-row no-border">
+    <div>
+      <div class="toggle-row-label" id="lbl-stickynav">Sticky navigation</div>
+      <div class="toggle-row-desc">Keeps navigation always visible at top</div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="stickyNavToggle" aria-labelledby="lbl-stickynav">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+
+  <span class="section-label">Animations</span>
+  <div class="toggle-row no-border">
+    <div>
+      <div class="toggle-row-label" id="lbl-motion">Reduce motion</div>
+      <div class="toggle-row-desc">Stops all animations and transitions</div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="motionToggle" aria-labelledby="lbl-motion">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+</div>
+
+<!-- VIEW: SENSORY -->
+<div class="view" id="view-sensory">
+  <button class="back-btn" id="backFromSensory" aria-label="Back to home">← Back</button>
+  <h2 class="view-title">Sensory</h2>
+
+  <button class="btn-sensory-mode" id="sensoryModeBtn">Sensory safe mode</button>
+
+  <span class="section-label">Individual controls</span>
+  <div class="toggle-row">
+    <div>
+      <div class="toggle-row-label" id="lbl-autoplay">Block autoplay videos</div>
+      <div class="toggle-row-desc">Stops videos starting automatically</div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="autoplayToggle" aria-labelledby="lbl-autoplay">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+  <div class="toggle-row">
+    <div>
+      <div class="toggle-row-label" id="lbl-animations">Remove animations</div>
+      <div class="toggle-row-desc">Stops all moving elements</div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="animationsToggle" aria-labelledby="lbl-animations">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+  <div class="toggle-row no-border">
+    <div>
+      <div class="toggle-row-label" id="lbl-urgency">Block urgency messages</div>
+      <div class="toggle-row-desc">Hides countdown timers and pressure tactics</div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="urgencyToggle" aria-labelledby="lbl-urgency">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+    <span class="section-label" style="margin:0;">Image brightness</span>
+    <span id="hint-brightness" style="font-size:10px;color:var(--muted);"></span>
+  </div>
+  <label for="brightSlider" class="visually-hidden">Image brightness</label>
+  <div class="slider-row">
+    <input type="range" id="brightSlider" min="40" max="100" step="1" value="100">
+    <span class="slider-val" id="brightValue" aria-hidden="true">100%</span>
+  </div>
+</div>
+
+<!-- VIEW: LANGUAGE -->
+<div class="view" id="view-language">
+  <button class="back-btn" id="backFromLanguage" aria-label="Back to home">← Back</button>
+  <h2 class="view-title">Language</h2>
+
+  <span class="section-label first">Simplification</span>
+  <div class="btn-group" style="margin-bottom:4px;">
+    <!-- FIX 9: aria-pressed on simplification buttons -->
+    <button class="style-btn active" data-simplify="off" aria-pressed="true">Off</button>
+    <button class="style-btn" data-simplify="light" aria-pressed="false">Light</button>
+    <button class="style-btn" data-simplify="heavy" aria-pressed="false">Heavy</button>
+  </div>
+
+  <span class="section-label">Word helpers</span>
+  <div class="toggle-row">
+    <div>
+      <div class="toggle-row-label" id="lbl-tooltips">Word tooltips</div>
+      <div class="toggle-row-desc">Hover over complex words for their meaning</div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="tooltipsToggle" aria-labelledby="lbl-tooltips">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+  <div class="toggle-row no-border">
+    <div>
+      <div class="toggle-row-label" id="lbl-complexwords">Highlight complex words</div>
+      <div class="toggle-row-desc">Marks difficult vocabulary in yellow</div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="complexWordsToggle" aria-labelledby="lbl-complexwords">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+
+  <span class="section-label">Reading aloud</span>
+  <div class="toggle-row no-border">
+    <div>
+      <div class="toggle-row-label" id="lbl-tts">Read page aloud</div>
+      <div class="toggle-row-desc">Uses your device to read the page out loud</div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="ttsToggle" aria-labelledby="lbl-tts">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+
+  <span class="section-label">Translation</span>
+  <div class="toggle-row no-border">
+    <div>
+      <div class="toggle-row-label" id="lbl-translation">Add translation button</div>
+      <div class="toggle-row-desc">Opens any page in Google Translate</div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="translationToggle" aria-labelledby="lbl-translation">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+</div>
+
+<!-- VIEW: ONBOARDING -->
+<div class="view" id="view-onboarding">
+
+  <!-- Welcome screen -->
+  <div id="onboard-welcome" style="display:block; text-align:center; padding:20px 16px;">
+    <div style="font-size:32px; margin-bottom:12px;">👋</div>
+    <h2 style="font-size:18px; font-weight:700; color:var(--ink); text-align:center; margin-bottom:8px; font-family:inherit; line-height:1.4;">Make the web work for you</h2>
+    <p style="font-size:14px; color:var(--muted); text-align:center; line-height:1.5; margin-bottom:20px;">Equols adapts any page to how you read best. How would you like to set it up?</p>
+    <button id="onboard-quiz-btn" class="btn-adapt" style="margin-bottom:8px;">🎯&nbsp;&nbsp;Take a quick quiz — 5 questions</button>
+    <button id="onboard-pick-btn" class="btn-summary" style="margin-bottom:8px;">⚙️&nbsp;&nbsp;Pick a profile directly</button>
+    <button id="onboard-skip-btn" style="background:none; border:none; color:var(--muted); font-size:12px; cursor:pointer; padding:8px; font-family:inherit; display:block; width:100%;">Skip for now →</button>
+  </div>
+
+  <!-- Quiz screen -->
+  <div id="onboard-quiz" style="display:none; padding:16px 16px 12px;">
+    <div style="height:3px; background:var(--border); border-radius:2px; margin-bottom:20px;">
+      <div id="quiz-fill" style="width:0%; height:100%; background:var(--brand); border-radius:2px; transition:width 0.3s ease;"></div>
+    </div>
+    <div id="quiz-step" style="font-size:11px; color:var(--muted); margin-bottom:8px;">Question 1 of 5</div>
+    <div id="quiz-q" style="font-size:15px; font-weight:600; color:var(--ink); line-height:1.4; margin-bottom:16px;"></div>
+    <div id="quiz-opts"></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+      <button id="quiz-back-btn" style="background:none; border:none; color:var(--muted); font-size:12px; cursor:pointer; font-family:inherit; padding:4px 0;">← Back</button>
+      <button id="quiz-next-btn" disabled style="padding:8px 20px; background:var(--brand-dark); color:white; border:none; border-radius:var(--radius-sm); font-size:13px; font-family:inherit; cursor:pointer; opacity:0.4;">Next →</button>
+    </div>
+  </div>
+
+  <!-- Profile picker screen -->
+  <div id="onboard-pick" style="display:none; padding:16px;">
+    <button class="back-btn" id="pick-back-btn" aria-label="Back to welcome">← Back</button>
+    <h2 class="view-title">Choose your profile</h2>
+    <button class="profile-option" data-profile="focused-reader">
+      <div class="pon">🎯 Focused Reader</div>
+      <div class="pod">Removes distractions, keeps you in the text</div>
+    </button>
+    <button class="profile-option" data-profile="calm-browser">
+      <div class="pon">🌙 Calm Browser</div>
+      <div class="pod">Reduces eye strain and sensory overload</div>
+    </button>
+    <button class="profile-option" data-profile="word-explorer">
+      <div class="pon">📖 Word Explorer</div>
+      <div class="pod">Helps with vocabulary and reading flow</div>
+    </button>
+    <button class="profile-option" data-profile="clear-viewer">
+      <div class="pon">👁 Clear Viewer</div>
+      <div class="pod">Makes text easier to see and track on screen</div>
+    </button>
+    <button class="profile-option" data-profile="easy-navigator">
+      <div class="pon">🤚 Easy Navigator</div>
+      <div class="pod">Calmer pages, easier to control</div>
+    </button>
+    <button class="profile-option" data-profile="all-round">
+      <div class="pon">✨ All Round</div>
+      <div class="pod">Balanced settings — a bit of everything</div>
+    </button>
+    <p style="font-size:11px; color:var(--muted); text-align:center; margin-top:8px;">You can change this anytime from the home screen</p>
+  </div>
+
+  <!-- Result screen -->
+  <div id="onboard-result" style="display:none; padding:16px;">
+    <div id="result-emoji" style="font-size:32px; margin-bottom:12px; text-align:center;"></div>
+    <div id="result-name" style="font-size:18px; font-weight:700; color:var(--ink); text-align:center; margin-bottom:6px;"></div>
+    <div id="result-desc" style="font-size:13px; color:var(--muted); text-align:center; line-height:1.5; margin-bottom:12px;"></div>
+    <div id="result-features">
+      <span class="rf-label">Features we'll turn on for you:</span>
+      <ul id="result-features-list"></ul>
+    </div>
+    <button id="result-start-btn" class="btn-adapt">Start using Equols</button>
+  </div>
+
 </div>
 
 <script src="popup.js"></script>

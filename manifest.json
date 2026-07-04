@@ -1,16 +1,25 @@
 {
   "manifest_version": 3,
-  "name": "Cognify",
-  "description": "AI-powered adaptive web experience",
+  "name": "Equols",
+  "description": "Adapt any webpage to how you read best. Visual, cognitive, motor, sensory and language accessibility in one place.",
   "version": "1.0",
   "permissions": ["storage", "activeTab", "scripting"],
-  "host_permissions": ["<all_urls>"],
+  "host_permissions": ["<all_urls>", "https://api.dictionaryapi.dev/*"],
+  "icons": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; object-src 'none'; img-src 'self' data:; connect-src 'none';"
+  },
+  "web_accessible_resources": [{
+    "resources": ["fonts/Lexend.woff2"],
+    "matches": ["<all_urls>"]
+  }],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Cognify"
+    "default_title": "Equols",
+    "default_icon": { "16": "icons/icon16.png", "48": "icons/icon48.png" }
   },
   "content_scripts": [
     {
