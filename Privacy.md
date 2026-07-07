@@ -1,11 +1,11 @@
 # Cognify Privacy Policy
 
-Cognify does not collect, store, or transmit any personal data.
+Cognify does not collect, store, or transmit any personal data to external servers.
 
-All preferences are stored locally on your device using Chrome's built-in storage. This data never leaves your browser.
+All user preferences and accessibility settings are stored locally on your device using Chrome's built-in storage API. This data never leaves your browser.
 
-Cognify does not track browsing history, collect analytics, or share data with third parties.
+Cognify does not track your browsing history, collect usage analytics, or share any information with third parties.
 
-When using AI summarisation, webpage text is sent to the Anthropic API to generate a summary only. No identifying information is included.
+When using the AI summarisation feature, webpage text is sent to the Anthropic API solely to generate a summary. No identifying information is included. This data is not stored or used for any other purpose.
 
 Last updated: June 2025

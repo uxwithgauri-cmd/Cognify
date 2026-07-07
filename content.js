@@ -453,6 +453,7 @@ async function getSummary() {
   }
 }
 
+// DEPRECATED — use showReadingTime instead
 function addReadTime(enabled) {
   const id = "cognify-readtime";
   const subId = "cognify-readtime-sub";
@@ -604,6 +605,11 @@ function toggleLineFocus(enabled) {
 
 function applyContrastBoost(enabled) {
   if (enabled) {
+    applyDarkMode(false);
+    chrome.storage.local.get(['visualSettings'], function(r) {
+      const vs = r.visualSettings || {}; vs.darkMode = false;
+      chrome.storage.local.set({ visualSettings: vs });
+    });
     if (!document.getElementById("cognify-contrast")) {
       const s = document.createElement("style"); s.id = "cognify-contrast";
       s.textContent = "html body p, html body h1, html body h2, html body h3, html body h4, html body h5, html body h6, html body li, html body td, html body th, html body label, html body span { color: #1a1a1a !important; -webkit-font-smoothing: antialiased !important; } html body a { color: #0047CC !important; text-decoration: underline !important; } html body button, html body [role=button], html body input[type=button], html body input[type=submit] { filter: contrast(1.3) !important; outline: 1px solid rgba(0,0,0,0.3) !important; } html body img, html body video, html body picture { filter: contrast(1.15) saturate(1.1) brightness(1.02) !important; } html body { background-color: #fafafa !important; }";
@@ -647,6 +653,7 @@ function enhanceFocusIndicators(enabled) {
 
 function applyDarkMode(enabled) {
   if (enabled) {
+    applyContrastBoost(false);
     if (!document.getElementById("cognify-darkmode")) {
       const s = document.createElement("style"); s.id = "cognify-darkmode";
       s.textContent = "html, body { background-color: #1a1a1a !important; color: #e5e5e5 !important; } html body p, html body h1, html body h2, html body h3, html body h4, html body h5, html body h6, html body li, html body span, html body td, html body th, html body label, html body div { color: #e5e5e5 !important; background-color: transparent !important; } html body a { color: #93c5fd !important; } html body input, html body textarea, html body select { background-color: #2a2a2a !important; color: #e5e5e5 !important; border-color: #444 !important; }";
@@ -850,7 +857,7 @@ function blockUrgencyElements(enabled) {
       document.head.appendChild(s);
     }
     _urgencyHidden = [];
-    document.querySelectorAll("div, p, span, section, aside").forEach(el => {
+    Array.from(document.querySelectorAll('[class*=countdown],[class*=timer],[class*=urgency],[class*=scarcity],[class*=flash],[class*=promo-bar],[class*=banner],[class*=notification]')).slice(0, 200).forEach(el => {
       const t = el.textContent.toLowerCase();
       if ((t.includes("limited time") || t.includes("expires") || / only \d+ left/.test(t)) && el.children.length < 5) {
         el.dataset.cognifyUrgencyHidden = "true"; el.style.display = "none"; _urgencyHidden.push(el);
@@ -891,6 +898,7 @@ function setLanguageSimplification(level) {
   const heavyExtra = { comprehend:"understand", ascertain:"find out", constitute:"make up", formulate:"create", incorporate:"include", modification:"change", proportion:"amount", subsequent:"next", initial:"first", primary:"main", secondary:"second", fundamental:"basic", alternative:"other choice", objective:"goal", component:"part", mechanism:"way it works", criteria:"rules", indication:"sign", outcome:"result" };
   const words = (level === 2 || level === "heavy") ? Object.assign({}, lightWords, heavyExtra) : lightWords;
   const escapeRegex = function(str) { return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); };
+  const compiledWords = Object.entries(words).map(([w, s]) => ({ re: new RegExp('\\b' + escapeRegex(w) + '\\b', 'gi'), replacement: s }));
   setTimeout(function() {
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
     let node;
@@ -899,7 +907,7 @@ function setLanguageSimplification(level) {
       const tag = parent.tagName;
       if (tag === "SCRIPT" || tag === "STYLE" || tag === "CODE" || tag === "PRE" || tag === "NOSCRIPT") continue;
       let text = node.textContent;
-      Object.entries(words).forEach(([w, s]) => { text = text.replace(new RegExp("\\b" + escapeRegex(w) + "\\b", "gi"), s); });
+      compiledWords.forEach(({re, replacement}) => { re.lastIndex = 0; text = text.replace(re, replacement); });
       if (text !== node.textContent) {
         if (!window._cognifySimplifiedNodes) window._cognifySimplifiedNodes = [];
         window._cognifySimplifiedNodes.push({ node: node, originalText: node.textContent });
@@ -941,9 +949,10 @@ function toggleTooltips(enabled) {
       tt.style.display = "block";
     }
 
-    window.cognifyTTHandler = async function(e) {
+    window.cognifyTTHandler = function(e) {
+      window.cognifyLastMouseEvent = e;
       clearTimeout(window.cognifyTTTimer);
-      window.cognifyTTTimer = setTimeout(async function() {
+      window.cognifyTTTimer = setTimeout(function() {
         const tt = document.getElementById("cognify-tt");
         if (!tt) return;
         let word = null;
@@ -966,23 +975,17 @@ function toggleTooltips(enabled) {
         tt.style.left = Math.min(e.clientX + 14, window.innerWidth - 280) + "px";
         tt.style.top = Math.min(e.clientY + 18, window.innerHeight - 100) + "px";
         tt.style.display = "block";
-        try {
-          const response = await fetch("https://api.dictionaryapi.dev/api/v2/entries/en/" + word);
-          if (!response.ok) { window.cognifyDefCache[word] = null; tt.style.display = "none"; return; }
-          const data = await response.json();
-          const firstMeaning = data[0] && data[0].meanings && data[0].meanings[0];
-          const partOfSpeech = (firstMeaning && firstMeaning.partOfSpeech) || "";
-          const definition = (firstMeaning && firstMeaning.definitions && firstMeaning.definitions[0] && firstMeaning.definitions[0].definition) || "";
-          if (!definition) { window.cognifyDefCache[word] = null; tt.style.display = "none"; return; }
-          const short = definition.length > 100 ? definition.slice(0, 97) + "..." : definition;
-          window.cognifyDefCache[word] = { pos: partOfSpeech, def: short };
-          showTooltip(tt, word, window.cognifyDefCache[word], e);
-        } catch(err) {
-          tt.style.display = "none";
-        }
+        chrome.runtime.sendMessage({ type: 'FETCH_DEFINITION', word: word }, function(response) {
+          if (chrome.runtime.lastError || !response || !response.definition) {
+            window.cognifyDefCache[word] = null; tt.style.display = "none"; return;
+          }
+          window.cognifyDefCache[word] = { pos: response.pos, def: response.definition };
+          showTooltip(tt, word, window.cognifyDefCache[word], window.cognifyLastMouseEvent);
+        });
       }, 400);
     };
 
+    document.removeEventListener("mousemove", window.cognifyTTHandler);
     document.addEventListener("mousemove", window.cognifyTTHandler);
   } else {
     document.removeEventListener("mousemove", window.cognifyTTHandler);
@@ -1201,3 +1204,50 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     bar.style.width = Math.min(progress, 100) + "%";
   });
 })();
+
+chrome.storage.local.get(null, function(result) {
+  if (chrome.runtime.lastError) return;
+  try {
+    const hostname = window.location.hostname;
+    const siteKey = 'site_' + hostname;
+    const src = result[siteKey] || result;
+    const vis = src.visualSettings || {};
+    const cog = src.cognitiveSettings || {};
+    const mot = src.motorSettings || {};
+    const sen = src.sensorySettings || {};
+    const lan = src.languageSettings || {};
+    const disp = src.cognifySettings || {};
+    if (vis.darkMode === true) applyDarkMode(true);
+    if (vis.textOnly === true) applyTextOnly(true);
+    if (vis.contrastBoost === true) applyContrastBoost(true);
+    if (vis.forceLinkUnderlines === true) forceLinkUnderlines(true);
+    if (vis.readingRuler === true) toggleReadingRuler(true);
+    if (vis.lineFocus === true) toggleLineFocus(true);
+    if (vis.enhanceFocusIndicators === true) enhanceFocusIndicators(true);
+    if (vis.imageOpacity !== undefined && vis.imageOpacity !== 100) applyImageMuter(vis.imageOpacity);
+    if (vis.colourBlindFilter && vis.colourBlindFilter !== 'none') applyColourBlindFilter(vis.colourBlindFilter);
+    if (cog.distractionRemoval === true) toggleDistractionRemoval(true);
+    if (cog.breakReminder === true) { const mins = parseInt(cog.breakInterval) || 20; toggleBreakReminder(true, mins); }
+    if (cog.autoChunking === true) toggleAutoChunking(true);
+    if (cog.sentenceHighlight === true) toggleSentenceHighlight(true);
+    if (cog.readTime === true) showReadingTime(true);
+    if (mot.enlargeClickTargets === true) enlargeClickTargets(true);
+    if (mot.toggleStickyNav === true) toggleStickyNav(true);
+    if (mot.reduceMotion === true) reduceMotion(true);
+    if (sen.sensoryMode === true) toggleSensoryMode(true);
+    if (sen.blockAutoplay === true) blockAutoplay(true);
+    if (sen.removeAnimations === true) removeAnimations(true);
+    if (sen.blockUrgency === true) blockUrgencyElements(true);
+    if (sen.imageBrightness !== undefined && sen.imageBrightness !== 100) dimBrightImages(sen.imageBrightness);
+    if (lan.tooltips === true) toggleTooltips(true);
+    if (lan.complexWords === true) highlightComplexWords(true);
+    if (lan.tts === true) toggleTextToSpeech(true);
+    if (lan.translation === true) addTranslationButton(true);
+    if (lan.simplification && lan.simplification !== 'off') setLanguageSimplification(lan.simplification);
+    if (disp.fontFamily && disp.fontFamily !== 'default') applyFont(disp.fontFamily);
+    const fs = parseFloat(disp.fontSize) || 16;
+    const lh = parseFloat(disp.lineHeight) || 1.6;
+    const ls = parseFloat(disp.letterSpacing) || 0;
+    if (fs !== 16 || lh !== 1.6 || ls !== 0) applySettings({ fontSize: fs, lineHeight: lh, letterSpacing: ls });
+  } catch(e) { console.error('Equols boot error:', e); }
+});

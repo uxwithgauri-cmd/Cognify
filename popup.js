@@ -136,14 +136,50 @@ function execScriptSafe(fnName, fn, args) {
   });
 }
 
-function showView(id) {
-  const current = document.querySelector('.view.active');
-  if (current) current.classList.remove('active');
-  const next = document.getElementById(id);
-  if (next) {
-    next.style.display = 'block';
-    setTimeout(() => next.classList.add('active'), 10);
+function showPanel(panelId) {
+  document.querySelectorAll('.eq-panel').forEach(p => p.classList.remove('eq-panel-active'));
+  const panel = document.getElementById(panelId);
+  if (panel) panel.classList.add('eq-panel-active');
+  const header = document.getElementById('eq-header');
+  const tabs = document.getElementById('eq-tabs');
+  if (panelId === 'panel-onboard') {
+    if (header) header.style.display = 'none';
+    if (tabs) tabs.style.display = 'none';
+  } else {
+    if (header) header.style.display = '';
+    if (tabs) tabs.style.display = '';
   }
+  document.querySelectorAll('.eq-tab').forEach(t => t.classList.remove('eq-tab-active'));
+  const tabMap = { 'panel-home': 'tab-home', 'panel-adjust': 'tab-adjust', 'panel-profiles': 'tab-profiles', 'panel-help': 'tab-home', 'panel-help-how': 'tab-home', 'panel-help-a11y': 'tab-home', 'panel-help-terms': 'tab-home' };
+  const activeTab = tabMap[panelId];
+  if (activeTab) { const t = document.getElementById(activeTab); if (t) t.classList.add('eq-tab-active'); }
+}
+
+function switchAdjustTab(subPanelId) {
+  document.querySelectorAll('.adjust-subpanel').forEach(p => p.classList.remove('active'));
+  const sp = document.getElementById(subPanelId);
+  if (sp) sp.classList.add('active');
+  const tabMap = { 'sp-display': 'at-display', 'sp-visual': 'at-visual', 'sp-cognitive': 'at-cognitive', 'sp-motor': 'at-motor', 'sp-sensory': 'at-sensory', 'sp-language': 'at-language' };
+  document.querySelectorAll('.adjust-tab').forEach(t => t.classList.remove('active'));
+  const tabId = tabMap[subPanelId];
+  if (tabId) { const t = document.getElementById(tabId); if (t) t.classList.add('active'); }
+  const content = document.getElementById('eq-content');
+  if (content) content.scrollTop = 0;
+}
+
+function showView(viewId) {
+  const map = {
+    'view1-home':      () => showPanel('panel-home'),
+    'view2-display':   () => { showPanel('panel-adjust'); switchAdjustTab('sp-display'); },
+    'view-visual':     () => { showPanel('panel-adjust'); switchAdjustTab('sp-visual'); },
+    'view-cognitive':  () => { showPanel('panel-adjust'); switchAdjustTab('sp-cognitive'); },
+    'view-motor':      () => { showPanel('panel-adjust'); switchAdjustTab('sp-motor'); },
+    'view-sensory':    () => { showPanel('panel-adjust'); switchAdjustTab('sp-sensory'); },
+    'view-language':   () => { showPanel('panel-adjust'); switchAdjustTab('sp-language'); },
+    'view3-profiles':  () => showPanel('panel-profiles'),
+    'view-onboarding': () => showPanel('panel-onboard')
+  };
+  if (map[viewId]) map[viewId]();
 }
 
 function setActiveFontButton(activeId) {
@@ -152,15 +188,7 @@ function setActiveFontButton(activeId) {
     if (!btn) return;
     const isActive = id === activeId;
     btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-    if (isActive) {
-      btn.style.border = '1px solid #1E3A8A';
-      btn.style.color = '#1E3A8A';
-      btn.style.background = '#EEF2FF';
-    } else {
-      btn.style.border = '1px solid #E5E7EB';
-      btn.style.color = '#374151';
-      btn.style.background = 'white';
-    }
+    btn.classList.toggle('active', isActive);
   });
 }
 
@@ -203,6 +231,7 @@ function saveDisplay(key, val) {
 
 function loadSettings() {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const tabId = tabs[0] ? tabs[0].id : null;
     const tabUrl = tabs[0] && tabs[0].url ? tabs[0].url : '';
     let hostname = '';
     try { hostname = new URL(tabUrl).hostname; } catch(e) {}
@@ -210,13 +239,98 @@ function loadSettings() {
     const keysToFetch = ['cognifySettings','cognifyProfile','visualSettings','cognitiveSettings','motorSettings','sensorySettings','languageSettings','quizCompleted'];
     if (siteKey) keysToFetch.push(siteKey);
     chrome.storage.local.get(keysToFetch, result => {
-      if (!result.quizCompleted && !result.cognifyProfile) {
-        showView('view-onboarding');
+      const quizCompleted = result.quizCompleted === true;
+      const hasProfile = result.cognifyProfile != null && result.cognifyProfile !== '';
+      if (!quizCompleted && !hasProfile) {
+        showPanel('panel-onboard');
         return;
       }
       const siteData = siteKey && result[siteKey] ? result[siteKey] : null;
       _applySettingsToUI(result, siteData, hostname);
+      if (siteData && tabId) {
+        applySettingsToPage(siteData, tabId);
+      }
     });
+  });
+}
+
+function applySettingsToPage(siteData, tabId) {
+  if (!siteData || !tabId) return;
+  const vs = siteData.visualSettings || {};
+  const cs = siteData.cognitiveSettings || {};
+  const ms = siteData.motorSettings || {};
+  const ss = siteData.sensorySettings || {};
+  const ls = siteData.languageSettings || {};
+  const ds = siteData.cognifySettings || {};
+  const settings = {
+    toggleDarkMode: vs.darkMode,
+    toggleTextOnly: vs.textOnly,
+    contrastToggle: vs.contrastBoost,
+    linksToggle: vs.forceLinkUnderlines,
+    rulerToggle: vs.readingRuler,
+    lineFocusToggle: vs.lineFocus,
+    focusRingsToggle: vs.enhanceFocusIndicators,
+    colourBlindFilter: vs.colourBlindFilter,
+    distractionToggle: cs.distractionRemoval,
+    toggleSentenceHighlight: cs.sentenceHighlight,
+    readTimeToggle: cs.readTime,
+    breakReminderToggle: cs.breakReminder,
+    breakIntervalInput: cs.breakInterval,
+    targetsToggle: ms.enlargeClickTargets,
+    stickyNavToggle: ms.toggleStickyNav,
+    motionToggle: ms.reduceMotion,
+    autoplayToggle: ss.blockAutoplay,
+    animationsToggle: ss.removeAnimations,
+    urgencyToggle: ss.blockUrgency,
+    tooltipsToggle: ls.tooltips,
+    complexWordsToggle: ls.complexWords,
+    ttsToggle: ls.tts,
+    translationToggle: ls.translation,
+    fontSize: ds.fontSize,
+    lineHeight: ds.lineHeight,
+    letterSpacing: ds.letterSpacing,
+    fontFamily: ds.fontFamily,
+    imageOpacity: vs.imageOpacity,
+    autoChunking: cs.autoChunking,
+    imageBrightness: ss.imageBrightness
+  };
+  chrome.scripting.executeScript({
+    target: { tabId },
+    func: (s) => {
+      try {
+        if (s.toggleDarkMode === true && window.applyDarkMode) applyDarkMode(true);
+        if (s.toggleTextOnly === true && window.applyTextOnly) applyTextOnly(true);
+        if (s.contrastToggle === true && window.applyContrastBoost) applyContrastBoost(true);
+        if (s.linksToggle === true && window.forceLinkUnderlines) forceLinkUnderlines(true);
+        if (s.rulerToggle === true && window.toggleReadingRuler) toggleReadingRuler(true);
+        if (s.lineFocusToggle === true && window.toggleLineFocus) toggleLineFocus(true);
+        if (s.focusRingsToggle === true && window.enhanceFocusIndicators) enhanceFocusIndicators(true);
+        if (s.distractionToggle === true && window.toggleDistractionRemoval) toggleDistractionRemoval(true);
+        if (s.autoChunking === true && window.toggleAutoChunking) toggleAutoChunking(true);
+        if (s.targetsToggle === true && window.enlargeClickTargets) enlargeClickTargets(true);
+        if (s.stickyNavToggle === true && window.toggleStickyNav) toggleStickyNav(true);
+        if (s.motionToggle === true && window.reduceMotion) reduceMotion(true);
+        if (s.autoplayToggle === true && window.blockAutoplay) blockAutoplay(true);
+        if (s.animationsToggle === true && window.removeAnimations) removeAnimations(true);
+        if (s.urgencyToggle === true && window.blockUrgencyElements) blockUrgencyElements(true);
+        if (s.tooltipsToggle === true && window.toggleTooltips) toggleTooltips(true);
+        if (s.complexWordsToggle === true && window.highlightComplexWords) highlightComplexWords(true);
+        if (s.ttsToggle === true && window.toggleTextToSpeech) toggleTextToSpeech(true);
+        if (s.translationToggle === true && window.addTranslationButton) addTranslationButton(true);
+        if (s.toggleSentenceHighlight === true && window.toggleSentenceHighlight) toggleSentenceHighlight(true);
+        if (s.readTimeToggle === true && window.showReadingTime) showReadingTime(true);
+        if (s.breakReminderToggle === true && window.toggleBreakReminder) { const mins = parseInt(s.breakIntervalInput) || 20; toggleBreakReminder(true, mins); }
+        const cbf = s.colourBlindFilter || 'none'; if (cbf !== 'none' && window.applyColourBlindFilter) applyColourBlindFilter(cbf);
+        if (s.imageOpacity !== undefined && s.imageOpacity !== 100 && window.applyImageMuter) applyImageMuter(s.imageOpacity);
+        if (s.imageBrightness !== undefined && s.imageBrightness !== 100 && window.dimBrightImages) dimBrightImages(s.imageBrightness);
+        const fontSize = parseFloat(s.fontSize) || 16;
+        const lineHeight = parseFloat(s.lineHeight) || 1.6;
+        const letterSpacing = parseFloat(s.letterSpacing) || 0;
+        if ((fontSize !== 16 || lineHeight !== 1.6 || letterSpacing !== 0) && window.applySettings) applySettings({ fontSize, lineHeight, letterSpacing });
+        const fontFamily = s.fontFamily || 'default'; if (fontFamily !== 'default' && window.applyFont) applyFont(fontFamily);
+      } catch(e) {}
+    },
+    args: [settings]
   });
 }
 
@@ -234,25 +348,18 @@ function _applySettingsToUI(result, siteData, hostname) {
       document.getElementById('saveSiteDot').style.display = 'inline-block';
     }
 
-    // Profile display
+    // Profile nudge card
     const nameEl = document.getElementById('currentProfileName');
     const descEl = document.getElementById('currentProfileDescription');
-    const profileCardHome = document.querySelector('.profile-card-home');
-    const changeBtn = document.getElementById('changeProfileBtn');
+    const quizLink = document.getElementById('take-quiz-link');
     if (profile && PROFILES[profile]) {
       nameEl.textContent = PROFILES[profile].name;
-      nameEl.style.color = '#111827'; nameEl.style.fontWeight = '600';
       descEl.textContent = PROFILES[profile].desc || '';
-      descEl.style.color = '#6B7280';
-      if (profileCardHome) { profileCardHome.style.background = ''; profileCardHome.style.border = ''; }
-      if (changeBtn) { changeBtn.textContent = 'Change profile'; changeBtn.style.fontWeight = ''; }
+      if (quizLink) quizLink.textContent = 'Change ›';
     } else {
       nameEl.textContent = 'Set up your profile';
-      nameEl.style.color = 'var(--brand)'; nameEl.style.fontWeight = '600';
       descEl.textContent = 'Answer 5 quick questions to personalise Equols';
-      descEl.style.color = 'var(--muted)';
-      if (profileCardHome) { profileCardHome.style.background = 'var(--brand-light)'; profileCardHome.style.border = '1px solid var(--brand)'; }
-      if (changeBtn) { changeBtn.textContent = 'Take the quiz →'; changeBtn.style.fontWeight = '600'; }
+      if (quizLink) quizLink.textContent = 'Take the quiz →';
     }
 
     // Display sliders
@@ -322,11 +429,12 @@ function _applySettingsToUI(result, siteData, hostname) {
     const sensoryBtn = document.getElementById('sensoryModeBtn');
     if (sensoryBtn) {
       const sensoryActive = ss.sensoryMode || false;
+      sensoryBtn.dataset.active = sensoryActive ? 'true' : 'false';
       if (sensoryActive) {
-        sensoryBtn.style.background = '#1E3A8A'; sensoryBtn.style.color = 'white';
+        sensoryBtn.style.background = '#1A56DB'; sensoryBtn.style.color = 'white'; sensoryBtn.style.border = '2px solid #1A56DB';
         sensoryBtn.innerHTML = '✓ Sensory safe mode — ON';
       } else {
-        sensoryBtn.style.background = 'white'; sensoryBtn.style.color = '#1E3A8A';
+        sensoryBtn.style.background = 'white'; sensoryBtn.style.color = '#1A56DB'; sensoryBtn.style.border = '2px solid #1A56DB';
         sensoryBtn.innerHTML = 'Sensory safe mode';
       }
     }
@@ -399,19 +507,76 @@ function updateNavBadges() {
 }
 
 function setupListeners() {
-  // Navigation
-  document.getElementById('changeProfileBtn').addEventListener('click', () => showView('view3-profiles'));
-  document.getElementById('displayBtn').addEventListener('click', () => showView('view2-display'));
-  document.getElementById('visualBtn').addEventListener('click', () => showView('view-visual'));
-  document.getElementById('cognitiveBtn').addEventListener('click', () => showView('view-cognitive'));
-  document.getElementById('motorBtn').addEventListener('click', () => showView('view-motor'));
-  document.getElementById('sensoryBtn').addEventListener('click', () => showView('view-sensory'));
-  document.getElementById('languageBtn').addEventListener('click', () => showView('view-language'));
+  // Navigation — profile nudge routes to onboarding or profiles
+  const nudge = document.getElementById('eq-profile-nudge');
+  if (nudge) nudge.addEventListener('click', () => {
+    chrome.storage.local.get(['cognifyProfile'], r => {
+      if (r.cognifyProfile) showPanel('panel-profiles');
+      else { resetOnboarding(); showPanel('panel-onboard'); }
+    });
+  });
+  const navMap = { 'nav-display': 'sp-display', 'nav-visual': 'sp-visual', 'nav-cognitive': 'sp-cognitive', 'nav-motor': 'sp-motor', 'nav-sensory': 'sp-sensory', 'nav-language': 'sp-language' };
+  Object.entries(navMap).forEach(([navId, spId]) => {
+    const btn = document.getElementById(navId);
+    if (btn) btn.addEventListener('click', () => { showPanel('panel-adjust'); switchAdjustTab(spId); });
+  });
 
-  // Back buttons
-  ['backFromDisplay','backFromProfiles','backFromVisual','backFromCognitive','backFromMotor','backFromSensory','backFromLanguage'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener('click', () => showView('view1-home'));
+  // Tab bar
+  const tabBarMap = { 'tab-home': 'panel-home', 'tab-adjust': 'panel-adjust', 'tab-profiles': 'panel-profiles' };
+  Object.entries(tabBarMap).forEach(([tabId, panelId]) => {
+    const btn = document.getElementById(tabId);
+    if (btn) btn.addEventListener('click', () => showPanel(panelId));
+  });
+
+  // Adjust sub-panel tab pills
+  const atMap = { 'at-display': 'sp-display', 'at-visual': 'sp-visual', 'at-cognitive': 'sp-cognitive', 'at-motor': 'sp-motor', 'at-sensory': 'sp-sensory', 'at-language': 'sp-language' };
+  Object.entries(atMap).forEach(([tabId, spId]) => {
+    const btn = document.getElementById(tabId);
+    if (btn) btn.addEventListener('click', () => switchAdjustTab(spId));
+  });
+
+  // Help
+  const helpBtn = document.getElementById('eq-help-btn');
+  if (helpBtn) helpBtn.addEventListener('click', () => showPanel('panel-help'));
+  const helpBack = document.getElementById('help-back-btn');
+  if (helpBack) helpBack.addEventListener('click', () => showPanel('panel-home'));
+  const profilesAdjustLink = document.getElementById('profiles-adjust-link');
+  if (profilesAdjustLink) profilesAdjustLink.addEventListener('click', () => showPanel('panel-adjust'));
+
+  // Help row handlers
+  const helpHow = document.getElementById('help-how-it-works');
+  if (helpHow) helpHow.addEventListener('click', () => showPanel('panel-help-how'));
+  const helpAccess = document.getElementById('help-accessibility');
+  if (helpAccess) helpAccess.addEventListener('click', () => showPanel('panel-help-a11y'));
+  const helpReset = document.getElementById('help-reset');
+  if (helpReset) helpReset.addEventListener('click', resetSettings);
+  const helpPrivacy = document.getElementById('help-privacy-link');
+  if (helpPrivacy) helpPrivacy.addEventListener('click', () => chrome.tabs.create({ url: 'https://uxwithgauri-cmd.github.io/Cognify/' }));
+  const helpTermsLink = document.getElementById('help-terms-link');
+  if (helpTermsLink) helpTermsLink.addEventListener('click', () => showPanel('panel-help-terms'));
+
+  // Help subpage back buttons
+  const helpHowBack = document.getElementById('help-how-back');
+  if (helpHowBack) helpHowBack.addEventListener('click', () => showPanel('panel-help'));
+  const helpA11yBack = document.getElementById('help-a11y-back');
+  if (helpA11yBack) helpA11yBack.addEventListener('click', () => showPanel('panel-help'));
+  const helpTermsBack = document.getElementById('help-terms-back');
+  if (helpTermsBack) helpTermsBack.addEventListener('click', () => showPanel('panel-help'));
+
+  // Contact send
+  const contactSend = document.getElementById('contact-send');
+  if (contactSend) contactSend.addEventListener('click', () => {
+    const email = (document.getElementById('contact-email').value || '').trim();
+    const message = (document.getElementById('contact-message').value || '').trim();
+    const status = document.getElementById('contact-status');
+    if (!email || !message) { status.textContent = 'Please fill in both fields'; status.style.color = '#EF4444'; return; }
+    const mailtoUrl = 'mailto:uxwithgauri@gmail.com?subject=Equols%20feedback&body=' + encodeURIComponent(message + '\n\nFrom: ' + email);
+    chrome.tabs.create({ url: mailtoUrl });
+    status.textContent = 'Opening your mail app...'; status.style.color = '#059669';
+    setTimeout(() => {
+      document.getElementById('contact-email').value = '';
+      document.getElementById('contact-message').value = '';
+    }, 1000);
   });
 
   // Adapt / Summary
@@ -449,7 +614,16 @@ function setupListeners() {
   });
 
   // Visual
-  document.getElementById('toggleDarkMode').addEventListener('change', e => { saveVisual('darkMode', e.target.checked); execScript((en) => { if (window.applyDarkMode) window.applyDarkMode(en); }, [e.target.checked]); updateNavBadges(); });
+  document.getElementById('toggleDarkMode').addEventListener('change', e => {
+    saveVisual('darkMode', e.target.checked);
+    execScript((en) => { if (window.applyDarkMode) window.applyDarkMode(en); }, [e.target.checked]);
+    if (e.target.checked) {
+      document.getElementById('contrastToggle').checked = false;
+      saveVisual('contrastBoost', false);
+      execScript((en) => { if (window.applyContrastBoost) window.applyContrastBoost(en); }, [false]);
+    }
+    updateNavBadges();
+  });
   document.getElementById('toggleTextOnly').addEventListener('change', e => { saveVisual('textOnly', e.target.checked); execScript((en) => { if (window.applyTextOnly) window.applyTextOnly(en); }, [e.target.checked]); updateNavBadges(); });
   document.querySelectorAll('.cbf-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -460,7 +634,16 @@ function setupListeners() {
       updateNavBadges();
     });
   });
-  document.getElementById('contrastToggle').addEventListener('change', e => { saveVisual('contrastBoost', e.target.checked); execScript((en) => { if (window.applyContrastBoost) window.applyContrastBoost(en); }, [e.target.checked]); updateNavBadges(); });
+  document.getElementById('contrastToggle').addEventListener('change', e => {
+    saveVisual('contrastBoost', e.target.checked);
+    execScript((en) => { if (window.applyContrastBoost) window.applyContrastBoost(en); }, [e.target.checked]);
+    if (e.target.checked) {
+      document.getElementById('toggleDarkMode').checked = false;
+      saveVisual('darkMode', false);
+      execScript((en) => { if (window.applyDarkMode) window.applyDarkMode(en); }, [false]);
+    }
+    updateNavBadges();
+  });
   document.getElementById('linksToggle').addEventListener('change', e => { saveVisual('forceLinkUnderlines', e.target.checked); execScript((en) => { if (window.forceLinkUnderlines) window.forceLinkUnderlines(en); }, [e.target.checked]); updateNavBadges(); });
   document.getElementById('rulerToggle').addEventListener('change', e => { saveVisual('readingRuler', e.target.checked); execScript((en) => { if (window.toggleReadingRuler) window.toggleReadingRuler(en); }, [e.target.checked]); updateNavBadges(); });
   document.getElementById('lineFocusToggle').addEventListener('change', e => { saveVisual('lineFocus', e.target.checked); execScript((en) => { if (window.toggleLineFocus) window.toggleLineFocus(en); }, [e.target.checked]); updateNavBadges(); });
@@ -513,10 +696,10 @@ function setupListeners() {
     const enable = !active;
     btn.dataset.active = enable ? 'true' : 'false';
     if (enable) {
-      btn.style.background = '#1E3A8A'; btn.style.color = 'white';
+      btn.style.background = '#1A56DB'; btn.style.color = 'white'; btn.style.border = '2px solid #1A56DB';
       btn.innerHTML = '✓ Sensory safe mode — ON';
     } else {
-      btn.style.background = 'white'; btn.style.color = '#1E3A8A';
+      btn.style.background = 'white'; btn.style.color = '#1A56DB'; btn.style.border = '2px solid #1A56DB';
       btn.innerHTML = 'Sensory safe mode';
     }
     document.getElementById('autoplayToggle').checked = enable;
@@ -585,8 +768,8 @@ function setupListeners() {
             btn.textContent = '';
             btn.appendChild(dot);
             btn.appendChild(document.createTextNode('Save for this site'));
-            btn.style.color = '#2563EB';
-            btn.style.borderColor = '#2563EB';
+            btn.style.color = '#1A56DB';
+            btn.style.borderColor = '#1A56DB';
           }, 2000);
         });
       });
@@ -604,7 +787,7 @@ function setupListeners() {
         document.getElementById('saveSiteDot').style.display = 'none';
         const btn = document.getElementById('clearSiteBtn');
         btn.textContent = 'Cleared ✓';
-        setTimeout(() => { btn.textContent = 'Clear site settings'; }, 2000);
+        setTimeout(() => { btn.textContent = 'Clear'; }, 2000);
       });
     });
   });
@@ -613,7 +796,7 @@ function setupListeners() {
   document.getElementById('retakeQuizBtn').addEventListener('click', () => {
     chrome.storage.local.remove(['quizCompleted', 'cognifyProfile'], () => {
       resetOnboarding();
-      showView('view-onboarding');
+      showPanel('panel-onboard');
     });
   });
   document.getElementById('resetSettingsLink').addEventListener('click', resetSettings);
@@ -667,14 +850,20 @@ function handleAdaptPage() {
   execScript(() => {
     document.querySelectorAll('p').forEach(p => {
       if (!p.innerText || p.innerText.trim().length < 60) return;
-      p.style.borderLeft = '3px solid #2563EB'; p.style.paddingLeft = '12px';
+      p.style.borderLeft = '3px solid #1A56DB'; p.style.paddingLeft = '12px';
       p.style.backgroundColor = '#F8FAFF'; p.style.borderRadius = '4px'; p.style.marginBottom = '16px';
-      const text = p.innerHTML; const end = text.search(/[.!?]/);
-      if (end !== -1) p.innerHTML = '<strong>' + text.substring(0, end+1) + '</strong>' + text.substring(end+1);
+      const text = p.innerText.trim(); const end = text.search(/[.!?]/);
+      if (end !== -1) {
+        p.textContent = '';
+        const strong = document.createElement('strong');
+        strong.textContent = text.substring(0, end + 1);
+        p.appendChild(strong);
+        p.appendChild(document.createTextNode(' ' + text.substring(end + 1)));
+      }
     });
   });
   setTimeout(() => {
-    btn.innerHTML = 'Adapt this page';
+    btn.innerHTML = '✦ Adapt page';
     btn.disabled = false;
     status.textContent = 'Page adapted ✓'; status.style.color = '#16a34a';
     setTimeout(() => { status.textContent = ''; }, 2000);
@@ -685,18 +874,18 @@ function handleGetSummary() {
   const btn = document.getElementById('summaryBtn');
   const status = document.getElementById('statusDiv');
   btn.disabled = true;
-  btn.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:8px">Getting summary <span class="cognify-spinner" style="border-top-color:#1E3A8A;border-color:rgba(30,58,138,0.3);border-top-color:#1E3A8A"></span></span>';
+  btn.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:8px">Getting summary <span class="cognify-spinner" style="border-top-color:#1A56DB;border-color:rgba(26,86,219,0.3);border-top-color:#1A56DB"></span></span>';
   status.textContent = ''; status.style.color = '#6b7280';
   execScript(() => {
     const existing = document.getElementById('cognify-summary'); if (existing) existing.remove();
     const container = document.querySelector('article') || document.querySelector('main') || document.body;
     const div = document.createElement('div'); div.id = 'cognify-summary';
-    div.style.cssText = 'background:#EEF2FF;border-left:4px solid #2563EB;padding:16px;margin-bottom:24px;border-radius:8px;font-family:inherit;';
+    div.style.cssText = 'background:#EEF2FF;border-left:4px solid #1A56DB;padding:16px;margin-bottom:24px;border-radius:8px;font-family:inherit;';
     div.innerHTML = '<strong>Key points</strong><ul style="margin:8px 0 0 20px"><li>This article covers a major recent news event.</li><li>Key people and organisations are involved.</li><li>The outcome is still developing.</li><li>Experts have shared different views on what happens next.</li></ul>';
     container.insertBefore(div, container.firstChild);
   });
   setTimeout(() => {
-    btn.innerHTML = 'Get summary';
+    btn.innerHTML = '📄 Get summary';
     btn.disabled = false;
     status.textContent = 'Summary added ✓'; status.style.color = '#16a34a';
     setTimeout(() => { status.textContent = ''; }, 2000);
@@ -708,15 +897,23 @@ function handleProfileSelect(profileKey) {
   const card = document.querySelector('.profile-card[data-profile="'+profileKey+'"]');
   if (card) { card.classList.add('active'); card.setAttribute('aria-pressed', 'true'); }
   if (PROFILES[profileKey]) {
-    document.getElementById('currentProfileName').textContent = PROFILES[profileKey].name;
-    document.getElementById('currentProfileDescription').textContent = PROFILES[profileKey].description;
+    const n = document.getElementById('currentProfileName');
+    const d = document.getElementById('currentProfileDescription');
+    const q = document.getElementById('take-quiz-link');
+    if (n) n.textContent = PROFILES[profileKey].name;
+    if (d) d.textContent = PROFILES[profileKey].desc || '';
+    if (q) q.textContent = 'Change ›';
   }
   const profileSettings = {
-    'focused-reader': { fontSize: 20, lineHeight: 1.8, letterSpacing: 1, fontFamily: 'lexend' },
-    'calm-browser': { fontSize: 18, lineHeight: 2.0, letterSpacing: 0.5, fontFamily: 'georgia' },
-    'quick-scanner': { fontSize: 16, lineHeight: 1.4, letterSpacing: 0, fontFamily: 'default' },
-    'deep-diver': { fontSize: 17, lineHeight: 1.7, letterSpacing: 0.5, fontFamily: 'default' },
-    'just-bigger-text': { fontSize: 22, lineHeight: 1.6, letterSpacing: 0, fontFamily: 'default' }
+    'focused-reader':  { fontSize: 20, lineHeight: 1.8, letterSpacing: 1,   fontFamily: 'lexend' },
+    'calm-browser':    { fontSize: 18, lineHeight: 2.0, letterSpacing: 0.5, fontFamily: 'georgia' },
+    'quick-scanner':   { fontSize: 16, lineHeight: 1.4, letterSpacing: 0,   fontFamily: 'default' },
+    'deep-diver':      { fontSize: 17, lineHeight: 1.7, letterSpacing: 0.5, fontFamily: 'default' },
+    'just-bigger-text':{ fontSize: 22, lineHeight: 1.6, letterSpacing: 0,   fontFamily: 'default' },
+    'word-explorer':   { fontSize: 17, lineHeight: 1.7, letterSpacing: 0.5, fontFamily: 'default' },
+    'clear-viewer':    { fontSize: 18, lineHeight: 1.8, letterSpacing: 0,   fontFamily: 'default' },
+    'easy-navigator':  { fontSize: 16, lineHeight: 1.6, letterSpacing: 0,   fontFamily: 'default' },
+    'all-round':       { fontSize: 17, lineHeight: 1.7, letterSpacing: 0.5, fontFamily: 'lexend' }
   };
   const profile = profileSettings[profileKey];
   if (profile) {
@@ -729,20 +926,26 @@ function handleProfileSelect(profileKey) {
     document.getElementById('letterSpacingValue').textContent = profile.letterSpacing;
     const idMap = { 'lexend': 'fontDyslexia', 'georgia': 'fontSerif', 'default': 'fontDefault' };
     setActiveFontButton(idMap[profile.fontFamily] || 'fontDefault');
+    execScript((p) => { if (window.applySettings) applySettings({ fontSize: p.fontSize, lineHeight: p.lineHeight, letterSpacing: p.letterSpacing }); if (p.fontFamily !== 'default' && window.applyFont) applyFont(p.fontFamily); }, [profile]);
   }
-  showView('view1-home');
+  applyProfileSettings(profileKey);
+  showPanel('panel-home');
 }
 
 function resetSettings() {
-  chrome.storage.local.clear(() => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  chrome.storage.local.get(['apiKey'], r => {
+    const savedKey = r.apiKey || null;
+    if (savedKey && !confirm('This will also delete your saved API key. Continue?')) return;
+    chrome.storage.local.clear(() => {
+      if (savedKey) chrome.storage.local.set({ apiKey: savedKey });
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]) {
         chrome.scripting.executeScript({
           target: { tabId: tabs[0].id },
           function: () => {
             ['cognify-font','cognify-colour','cognify-contrast','cognify-contrast-bg','cognify-links','cognify-cbf-svg','cognify-cbf-style','cognify-focus','cognify-motion','cognify-scroll','cognify-targets','cognify-anim','cognify-urgency','cognify-bright','cognify-reading','cognify-distraction','cognify-progress-bar','cognify-ruler','cognify-lf-top','cognify-lf-bottom','cognify-summary','cognify-tt','cognify-break','cognify-translate-btn','cognify-readtime','cognify-readtime-sub','cognify-tts-bar','cognify-timer-badge','cognify-darkmode','cognify-textonly','cognify-sliders','cognify-lh','cognify-ls','cognify-imgmute'].forEach(id => { const el = document.getElementById(id); if (el) el.remove(); });
             document.documentElement.style.filter = '';
-            if (window.cognifyTTHandler) { document.removeEventListener('mouseover', window.cognifyTTHandler); window.cognifyTTHandler = null; }
+            if (window.cognifyTTHandler) { document.removeEventListener('mousemove', window.cognifyTTHandler); window.cognifyTTHandler = null; }
             if (window.cognifyBreakTimer) { clearInterval(window.cognifyBreakTimer); window.cognifyBreakTimer = null; }
             if (window.speechSynthesis) window.speechSynthesis.cancel();
           }
@@ -774,20 +977,27 @@ function resetSettings() {
     document.querySelectorAll('[data-simplify]').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
     const offSimplify = document.querySelector('[data-simplify="off"]');
     if (offSimplify) { offSimplify.classList.add('active'); offSimplify.setAttribute('aria-pressed', 'true'); }
-    // Reset profile card to quiz nudge
+    // Reset profile nudge
     const nameEl = document.getElementById('currentProfileName');
     const descEl = document.getElementById('currentProfileDescription');
-    const changeBtn = document.getElementById('changeProfileBtn');
-    const profileCardHome = document.querySelector('.profile-card-home');
-    if (nameEl) { nameEl.textContent = 'Set up your profile'; nameEl.style.color = 'var(--brand)'; nameEl.style.fontWeight = '600'; }
-    if (descEl) { descEl.textContent = 'Answer 5 quick questions to personalise Equols'; descEl.style.color = 'var(--muted)'; }
-    if (profileCardHome) { profileCardHome.style.background = 'var(--brand-light)'; profileCardHome.style.border = '1px solid var(--brand)'; }
-    if (changeBtn) { changeBtn.textContent = 'Take the quiz →'; changeBtn.style.fontWeight = '600'; }
+    const quizLink = document.getElementById('take-quiz-link');
+    if (nameEl) nameEl.textContent = 'Set up your profile';
+    if (descEl) descEl.textContent = 'Answer 5 quick questions to personalise Equols';
+    if (quizLink) quizLink.textContent = 'Take the quiz →';
     document.querySelectorAll('.profile-card').forEach(c => { c.classList.remove('active'); c.setAttribute('aria-pressed', 'false'); });
     // Hide site notice and clear status
     document.getElementById('siteNotice').style.display = 'none';
     document.getElementById('saveSiteDot').style.display = 'none';
+    const sensoryBtn = document.getElementById('sensoryModeBtn');
+    if (sensoryBtn) {
+      sensoryBtn.style.background = 'white';
+      sensoryBtn.style.color = '#1A56DB';
+      sensoryBtn.style.border = '2px solid #1A56DB';
+      sensoryBtn.innerHTML = 'Sensory safe mode';
+      sensoryBtn.dataset.active = 'false';
+    }
     document.getElementById('statusDiv').textContent = '';
+    });
   });
 }
 
@@ -901,14 +1111,14 @@ function applyProfileSettings(profileKey) {
 
 function navigateToHome(profileKey) {
   const key = profileKey || _resultProfileKey;
-  showView('view1-home');
+  showPanel('panel-home');
   if (key && PROFILES[key]) {
     const nameEl = document.getElementById('currentProfileName');
     const descEl = document.getElementById('currentProfileDescription');
-    nameEl.textContent = PROFILES[key].name;
-    nameEl.style.color = '#111827'; nameEl.style.fontWeight = '600';
-    descEl.textContent = PROFILES[key].desc;
-    descEl.style.color = '#6B7280';
+    const quizLink = document.getElementById('take-quiz-link');
+    if (nameEl) nameEl.textContent = PROFILES[key].name;
+    if (descEl) descEl.textContent = PROFILES[key].desc;
+    if (quizLink) quizLink.textContent = 'Change ›';
   }
 }
 
@@ -926,7 +1136,7 @@ function setupOnboardingListeners() {
   });
 
   document.getElementById('onboard-skip-btn').addEventListener('click', () => {
-    chrome.storage.local.set({ quizCompleted: true }, () => showView('view1-home'));
+    chrome.storage.local.set({ quizCompleted: true }, () => showPanel('panel-home'));
   });
 
   document.getElementById('pick-back-btn').addEventListener('click', () => {
